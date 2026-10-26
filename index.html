@@ -395,7 +395,7 @@ const FLOORS = [
   },
   {
     id: "kec", zone: "career", level: "2", m: 75,
-    title: "KEC International", sub: "Finance Analyst Intern · Jaipur · May – Jul 2023",
+    title: "KEC International", sub: "Infrastructure EPC · Finance Analyst Intern · Jaipur · May – Jul 2023",
     stats: [{ v: "18%", l: "Better portfolio recs" }, { v: "15+", l: "Stocks analysed" }],
     body: "Technical and fundamental analysis across infrastructure and power stocks, and the Excel valuation models behind portfolio recommendations.",
   },
@@ -412,13 +412,13 @@ const FLOORS = [
   },
   {
     id: "apac", zone: "career", level: "4", m: 165,
-    title: "APAC Insurance", sub: "Founder's Office Intern · Remote · Sep – Nov 2024",
+    title: "APAC Insurance", sub: "Insurance broking · Founder's Office Intern · Remote · Sep – Nov 2024",
     stats: [{ v: "+15%", l: "Customer acquisition" }, { v: "−20%", l: "Project turnaround" }],
     body: "Market research and segmentation that lifted customer acquisition, plus workflow fixes that cut turnaround time.",
   },
   {
     id: "epik", zone: "career", level: "5", m: 210,
-    title: "EPIK", sub: "Product Intern · Bangalore · Jan – Jul 2026",
+    title: "EPIK Electronics", sub: "Product Intern · Bangalore · Jan – Jul 2026",
     stats: [
       { v: "−25%", l: "Workflow delays" },
       { v: "95%", l: "On-time delivery" },
@@ -564,10 +564,10 @@ const FLOORS = [
 const DETAILS = {
   lobby: ["I lead a study abroad marketplace from zero as Product Manager at alokbansal.com.", "I cofounded SIGMA, which reached ₹50L+ in revenue in 18 months.", "I've worked in two founder's offices and build my own products with AI tools.", "I studied at BITS Pilani: M.Sc. Mathematics and B.E. Mechanical."],
   bits: ["Dual degree: M.Sc. Mathematics and B.E. Mechanical, 2021 – 2026.", "Coursework in financial risk and management, business analysis and valuation.", "Game theory, cryptography, and graphs and networks.", "Thesis on simulation-based optimisation."],
-  kec: ["Technical and fundamental analysis across infrastructure and power stocks.", "Analysed 15+ stocks for the portfolio team.", "Built the Excel valuation models behind portfolio recommendations.", "Those models improved portfolio recommendations by 18%."],
+  kec: ["KEC International is an infrastructure EPC company: power transmission, cables and railways.", "Technical and fundamental analysis across infrastructure and power stocks.", "Analysed 15+ stocks for the portfolio team.", "Built the Excel valuation models behind portfolio recommendations.", "Those models improved portfolio recommendations by 18%."],
   sigma: ["Cofounded a merchandising platform for students, colleges, clubs and companies.", "Digitised a messy offline ordering process.", "Built real-time order tracking so every customer could see their order move.", "Ran the supply chain and the team behind it.", "Served 3,000+ students and reached ₹50L+ in revenue in 18 months."],
-  apac: ["Founder's office intern, remote, Sep – Nov 2024.", "Ran market research and customer segmentation for the founder.", "The segmentation work lifted customer acquisition by 15%.", "Workflow fixes cut project turnaround time by 20%."],
-  epik: ["Product intern in Bangalore, Jan – Jul 2026.", "Wrote user stories for engineering, design and ops.", "Led the root cause analysis that cut workflow delays by 25%.", "Owned delivery at 95% on time; automation added 20–30% efficiency."],
+  apac: ["APAC Insurance is an insurance broking firm: it compares insurers and places the right cover for its clients.", "Founder's office intern, remote, Sep – Nov 2024.", "Ran market research and customer segmentation for the founder.", "The segmentation work lifted customer acquisition by 15%.", "Workflow fixes cut project turnaround time by 20%."],
+  epik: ["Product intern at EPIK Electronics in Bangalore, Jan – Jul 2026.", "Wrote user stories for engineering, design and ops.", "Led the root cause analysis that cut workflow delays by 25%.", "Owned delivery at 95% on time; automation added 20–30% efficiency."],
   alokbansal: ["Product Manager since 2026.", "Leading a new study abroad marketplace from zero.", "Redesigned the landing flow, which doubled inquiry submissions.", "Technical SEO took the site to #1 on Google, and server load time fell by 90%."],
   marketplace: ["Product strategy for a new marketplace, built from zero.", "A catalogue of 12+ categories, from universities to visas and loans.", "Partner onboarding and the acquisition funnel.", "Rewrote the user stories and redesigned the landing flow: 2× inquiry submissions."],
   nivesh: ["Designed and built on my own.", "Personalised SIP onboarding, live portfolio tracking and XIRR analytics.", "A conversational Hinglish advisor powered by Claude.", "Supabase backend, deployed on Railway, shipped as a PWA plus APK.", "Trail commission plus a Pro plan, with a 17.8× LTV:CAC model."],
@@ -1108,6 +1108,9 @@ try {
 }
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
+// real sun shadows outside: the tower and the skyline shade each other and the streets
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMappingExposure = 1.0;
 host.appendChild(renderer.domElement);
 const ANISO = renderer.capabilities.getMaxAnisotropy();
@@ -2244,7 +2247,7 @@ function roomFinance(c) {
   tick.repeat.set(0.5, 1);
   screen(rw, 6.0, 0.22, tick, 0, 1.25, 0.05, 0, 0.02);
   c.updates.push((dt) => (tick.offset.x = (tick.offset.x + dt * 0.03) % 1));
-  brandSign(rw, "KEC International", "Finance · May – Jul 2023", 3.85);
+  brandSign(rw, "KEC International", "Infrastructure EPC · Finance · 2023", 3.85);
   const a = screenTex("kecChart", 640, 360), b = screenTex("kecSheet", 640, 360);
   for (const x of [1.5, 4.5]) for (const z of [-4, -2, 0, 2]) {
     const dg = desk(g, x, z, -Math.PI / 2);
@@ -2356,7 +2359,7 @@ function roomApac(c) {
     });
     put(rw, P(0.42, 0.42, std({ map: t, roughness: 0.9 })), -5.2 + (i % 5) * 0.75, 2.5 - Math.floor(i / 5) * 0.75, 0.05 + i * 0.0005, 0, 0, rnd(-0.08, 0.08));
   });
-  brandSign(rw, "APAC Insurance", "Founder's office · Sep – Nov 2024", 3.95, "#1f2328", -1);
+  brandSign(rw, "APAC Insurance", "Insurance broking · Founder's office · 2024", 3.95, "#1f2328", -1);
   plant(g, -8, -6, 1.3);
   plant(g, 8.3, 5.5, 1.2);
   const dk = desk(g, -5, -3.5, 0);
@@ -2392,16 +2395,11 @@ function roomEpik(c) {
     });
     put(rw, P(0.5, 0.5, std({ map: t, roughness: 0.9 })), -4.6 + col * 2 + (k % 2) * 0.62, 2.4 - Math.floor(k / 2) * 0.62, 0.06 + k * 0.001, 0, 0, rnd(-0.07, 0.07));
   }
-  brandSign(rw, "EPIK", "Product · Jan – Jul 2026", 3.85, "#1f2328", -1);
+  brandSign(rw, "EPIK Electronics", "Product · Jan – Jul 2026", 3.85, "#1f2328", -1);
   const st = screenTex("stories", 640, 400);
   deskRow(g, [-6, -3.5], -3.5, 0, st);
   deskRow(g, [-6, -3.5], 0, 0, st);
-  for (const [x, z, col] of [[3, -4.6, 0xf97316], [4.3, -3.8, 0x2f5a8a], [2.2, -3.2, 0x3f6b4f]]) {
-    const bb = put(g, S(0.55, std({ color: col, roughness: 0.9 }), 20, 14), x, 0.32, z);
-    bb.scale.set(1, 0.6, 1);
-    blob(g, 1.3, 1.3, x, z);
-  }
-  const tv = grp(g, 0.5, 0, -5.6, 0.2);
+  const tv = grp(g, -8.2, 0, 2.6, Math.PI / 2);
   put(tv, B(0.06, 1.5, 0.06, M.steelDark), 0, 0.75, 0);
   put(tv, B(0.8, 0.04, 0.5, M.steelDark), 0, 0.02, 0);
   screen(tv, 1.6, 0.9, cvt(1280, 720, (q, W, H) => {
@@ -2961,6 +2959,703 @@ const ROOMS = {
   spire: roomSpire,
 };
 
+// ---------- props that say what each company or project actually does ----------
+const label = (text, bg = "#ffffff", fg = "#1f2328", w = 512, h = 128, font = `700 64px ${FB}`) =>
+  cvt(w, h, (q, W, H) => {
+    q.fillStyle = bg;
+    q.fillRect(0, 0, W, H);
+    // squeeze long text to fit the label rather than letting it run off the edge
+    q.font = font;
+    const k = Math.min(1, (W * 0.9) / q.measureText(text).width);
+    q.setTransform(k, 0, 0, 1, (W / 2) * (1 - k), 0);
+    txt(q, text, W / 2, H / 2 + 2, font, fg, "center", "middle");
+  });
+const plaque = (p, text, x, y, z, ry = 0, w = 0.9, bg = "#1f2328", fg = "#e9d9b4") =>
+  put(p, P(w, w * 0.18, std({ map: label(text, bg, fg, 1024, 184, `600 64px ${FM}`), roughness: 0.6 })), x, y, z, ry, -0.35);
+function hardHat(p, x, y, z, color = 0xf2c230) {
+  const g = grp(p, x, y, z, rnd(6));
+  put(g, mesh(new THREE.SphereGeometry(0.13, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), std({ color, roughness: 0.4 })), 0, 0.01, 0);
+  put(g, C(0.17, 0.17, 0.012, std({ color, roughness: 0.4 }), 24), 0.03, 0.01, 0);
+  put(g, B(0.03, 0.03, 0.24, std({ color, roughness: 0.4 })), 0, 0.12, 0);
+  return g;
+}
+
+// ===== EPIK Electronics: a hardware lab beside the product team =====
+const scopeTex = () =>
+  cvt(512, 320, (q, W, H) => {
+    q.fillStyle = "#04140c";
+    q.fillRect(0, 0, W, H);
+    q.strokeStyle = "rgba(80,255,160,0.15)";
+    for (let x = 0; x <= W; x += W / 10) q.strokeRect(x, 0, 0, H);
+    for (let y = 0; y <= H; y += H / 8) q.strokeRect(0, y, W, 0);
+    q.lineWidth = 3;
+    [["#f7e04a", 0.06, 70, 0], ["#4ad8f7", 0.025, 45, 1.2]].forEach(([c, f, a, ph]) => {
+      q.strokeStyle = c;
+      q.beginPath();
+      for (let x = 0; x < W; x++) q.lineTo(x, H / 2 + Math.sin(x * f + ph) * a + (c === "#4ad8f7" ? 60 : -30));
+      q.stroke();
+    });
+    txt(q, "CH1 2.00V   CH2 500mV   10µs", 12, H - 14, `500 20px ${FM}`, "#9ff5c4");
+  });
+const pcbTex = () =>
+  cvt(256, 192, (q, W, H) => {
+    q.fillStyle = "#0f5a32";
+    q.fillRect(0, 0, W, H);
+    q.strokeStyle = "#c9a74a";
+    q.lineWidth = 2;
+    for (let i = 0; i < 40; i++) {
+      q.beginPath();
+      let x = rnd(W), y = rnd(H);
+      q.moveTo(x, y);
+      for (let k = 0; k < 3; k++) {
+        Math.random() < 0.5 ? (x += rnd(-60, 60)) : (y += rnd(-50, 50));
+        q.lineTo(x, y);
+      }
+      q.stroke();
+    }
+    q.fillStyle = "#d8c27a";
+    for (let i = 0; i < 70; i++) q.fillRect(rnd(W), rnd(H), 4, 4);
+    q.fillStyle = "#111";
+    for (let i = 0; i < 6; i++) q.fillRect(rnd(20, W - 60), rnd(20, H - 50), rnd(26, 50), rnd(18, 36));
+    txt(q, "EPIK REV C", 10, H - 10, `600 14px ${FM}`, "#e6f0e8");
+  });
+function pcb(p, x, y, z, ry = 0, tex) {
+  const g = grp(p, x, y, z, ry);
+  put(g, B(0.24, 0.012, 0.18, std({ map: tex, roughness: 0.45 })), 0, 0.006, 0);
+  for (let i = 0; i < 4; i++) put(g, B(rnd(0.02, 0.05), 0.01, rnd(0.02, 0.04), M.black), rnd(-0.09, 0.09), 0.017, rnd(-0.06, 0.06));
+  put(g, C(0.012, 0.012, 0.03, std({ color: 0x2b59c3, roughness: 0.4 }), 10), 0.08, 0.027, -0.05);
+  return g;
+}
+function elecBench(c, p, x, z, ry, texs) {
+  const g = grp(p, x, 0, z, ry);
+  put(g, B(3.4, 0.05, 0.9, std({ color: 0x2f6f9f, roughness: 0.75 }), 0.01), 0, 0.9, 0);
+  for (const sx of [-1.6, 1.6]) for (const sz of [-0.38, 0.38]) put(g, B(0.05, 0.88, 0.05, M.steelDark), sx, 0.44, sz);
+  put(g, B(3.2, 0.03, 0.6, M.steelDark), 0, 0.25, 0);
+  // riser shelf with parts bins
+  for (const sx of [-1.65, 1.65]) put(g, B(0.04, 0.7, 0.3, M.steel), sx, 1.27, -0.32);
+  put(g, B(3.34, 0.03, 0.3, M.steel), 0, 1.4, -0.32);
+  const binCols = [0xd94841, 0x2b59c3, 0xf2c230, 0x3f8b4f, 0x2b2b2b];
+  for (let i = 0; i < 12; i++) put(g, B(0.22, 0.12, 0.24, std({ color: binCols[i % 5], roughness: 0.6 })), -1.5 + i * 0.27, 1.48, -0.32);
+  // oscilloscope
+  const sc = grp(g, -1.05, 0.925, -0.18, 0.15);
+  put(sc, B(0.44, 0.26, 0.3, M.charcoal, 0.02), 0, 0.13, 0);
+  put(sc, P(0.26, 0.17, basic(texs.scope)), -0.06, 0.15, 0.151);
+  for (let i = 0; i < 6; i++) put(sc, C(0.012, 0.012, 0.02, M.steel, 8), 0.14 + (i % 2) * 0.05, 0.22 - Math.floor(i / 2) * 0.05, 0.155, 0, Math.PI / 2);
+  // soldering station and iron
+  put(g, B(0.18, 0.1, 0.16, std({ color: 0x2b59c3, roughness: 0.4 }), 0.01), -0.45, 0.975, -0.15);
+  put(g, P(0.08, 0.04, basic(label("350°C", "#05121a", "#ff7a3d", 256, 128, `700 80px ${FM}`))), -0.45, 0.985, -0.069);
+  rod(g, [-0.25, 0.93, -0.15], [-0.18, 1.05, -0.05], 0.008, M.steel);
+  rod(g, [-0.18, 1.05, -0.05], [-0.05, 0.96, 0.15], 0.012, std({ color: 0x222222 }));
+  // multimeter
+  put(g, B(0.1, 0.18, 0.04, std({ color: 0xf2c230, roughness: 0.5 }), 0.01), 0.35, 0.99, -0.2, 0, -0.4);
+  // boards in progress
+  pcb(g, 0.0, 0.925, 0.12, 0.2, texs.pcb);
+  pcb(g, 0.75, 0.925, 0.05, -0.3, texs.pcb);
+  pcb(g, 1.25, 0.925, 0.18, 0.1, texs.pcb);
+  // magnifier lamp
+  rod(g, [1.5, 0.93, -0.3], [1.45, 1.35, -0.1], 0.01, M.steel);
+  rod(g, [1.45, 1.35, -0.1], [1.2, 1.25, 0.1], 0.01, M.steel);
+  put(g, mesh(new THREE.TorusGeometry(0.09, 0.015, 8, 24), M.white), 1.2, 1.22, 0.1, 0, Math.PI / 2);
+  put(g, C(0.085, 0.085, 0.005, M.glassTint, 24), 1.2, 1.22, 0.1);
+  // reel of components
+  put(g, C(0.12, 0.12, 0.04, M.white, 24), -1.5, 0.95, 0.2, 0, Math.PI / 2);
+  for (const sx of [-0.9, 0.3, 1.2]) chair(g, sx, 0.75, 0, M.charcoal);
+  blob(g, 3.8, 1.6);
+  return g;
+}
+function productShelf(p, x, z, ry) {
+  const g = grp(p, x, 0, z, ry);
+  for (const sx of [-1.4, 1.4]) put(g, B(0.04, 2.2, 0.4, M.white), sx, 1.1, 0);
+  for (const y of [0.5, 1.1, 1.7]) put(g, B(2.8, 0.03, 0.4, M.white), 0, y, 0);
+  const dark = std({ color: 0x24272b, roughness: 0.85 });
+  // speakers, earbuds, power banks, routers, smartwatches
+  for (let i = 0; i < 4; i++) put(g, C(0.09, 0.09, 0.22, dark, 20), -1.05 + i * 0.7, 0.62, 0);
+  for (let i = 0; i < 5; i++) put(g, B(0.09, 0.05, 0.07, M.white, 0.025), -1.1 + i * 0.55, 1.14, 0);
+  for (let i = 0; i < 4; i++) {
+    const r = grp(g, -0.95 + i * 0.65, 1.73, 0);
+    put(r, B(0.26, 0.05, 0.18, M.white, 0.01), 0, 0.025, 0);
+    for (const sx of [-0.1, 0.1]) rod(r, [sx, 0.05, -0.08], [sx * 1.4, 0.24, -0.1], 0.006, M.charcoal);
+  }
+  for (let i = 0; i < 3; i++) put(g, B(0.12, 0.2, 0.03, std({ color: [0x2b59c3, 0x2b2b2b, 0xd94841][i], roughness: 0.4 }), 0.01), -0.3 + i * 0.3, 1.82, 0.12);
+  put(g, P(2.6, 0.32, std({ map: label("EPIK ELECTRONICS · OUR PRODUCTS", "#1f2328", "#f3f4f6", 1600, 196, `700 84px ${FD}`) })), 0, 2.05, 0.21);
+  blob(g, 3.2, 0.9);
+  return g;
+}
+function conveyor(c, p, x0, x1, z) {
+  const len = x1 - x0, cx = (x0 + x1) / 2;
+  const g = grp(p, cx, 0, z);
+  put(g, B(len, 0.12, 0.62, M.steelDark), 0, 0.82, 0);
+  put(g, B(len, 0.02, 0.5, M.black), 0, 0.89, 0);
+  for (let x = -len / 2 + 0.3; x < len / 2; x += 1.2) for (const sz of [-0.27, 0.27]) put(g, B(0.05, 0.8, 0.05, M.steel), x, 0.4, sz);
+  for (const sx of [-len / 2, len / 2]) put(g, C(0.07, 0.07, 0.6, M.steel, 16), sx, 0.88, 0, 0, Math.PI / 2);
+  // test arch near the end, with a pass light
+  const arch = grp(g, len / 2 - 1.2, 0.9, 0);
+  for (const sz of [-0.35, 0.35]) put(arch, B(0.08, 0.55, 0.06, M.steel), 0, 0.27, sz);
+  put(arch, B(0.1, 0.06, 0.76, M.steel), 0, 0.55, 0);
+  put(arch, P(0.02, 0.55, new THREE.MeshBasicMaterial({ color: 0xff2a2a, transparent: true, opacity: 0.5, toneMapped: false })), 0, 0.27, 0, Math.PI / 2);
+  const pass = put(arch, S(0.05, M.greenLed, 10, 8), 0, 0.64, 0.3);
+  put(g, P(1.3, 0.25, std({ map: label("QC · TEST & PACK", "#f2c230", "#111", 1024, 196, `700 90px ${FD}`) })), len / 2 - 1.2, 1.65, 0.36);
+  const devMat = M.white;
+  const devices = [];
+  for (let i = 0; i < 8; i++) devices.push(put(g, B(0.26, 0.08, 0.18, devMat, 0.03), 0, 0.95, rnd(-0.05, 0.05)));
+  c.updates.push((dt, t) => {
+    devices.forEach((d, i) => (d.position.x = (((t * 0.35 + i * (len / 8)) % len) + len) % len - len / 2));
+    pass.visible = Math.sin(t * 3) > -0.3;
+  });
+  blob(g, len + 0.4, 1.2);
+  return g;
+}
+function partsRack(p, x, z, ry) {
+  const g = grp(p, x, 0, z, ry);
+  for (const sx of [-0.6, 0.6]) put(g, B(0.04, 2, 0.45, M.steelDark), sx, 1, 0);
+  for (let r = 0; r < 6; r++) {
+    put(g, B(1.2, 0.02, 0.45, M.steelDark), 0, 0.25 + r * 0.32, 0);
+    for (let k = 0; k < 4; k++) put(g, B(0.26, 0.16, 0.4, std({ color: [0xd94841, 0x2b59c3, 0xf2c230, 0x3f8b4f][(r + k) % 4], roughness: 0.6 })), -0.42 + k * 0.28, 0.34 + r * 0.32, 0);
+  }
+  blob(g, 1.6, 0.8);
+  return g;
+}
+const _epik = ROOMS.epik;
+ROOMS.epik = (c, f) => {
+  const spec = _epik(c, f);
+  const g = c.g;
+  const texs = { scope: scopeTex(), pcb: pcbTex() };
+  elecBench(c, g, 3.6, -1.4, Math.PI, texs);
+  elecBench(c, g, 3.6, -4.2, Math.PI, texs);
+  conveyor(c, g, -2.5, 7.5, -6.1);
+  productShelf(g, -8.75, -2.2, Math.PI / 2);
+  partsRack(g, 7.8, 4.6, -Math.PI / 2);
+  put(g, P(2.2, 0.5, std({ map: label("ESD SAFE AREA · WEAR A WRIST STRAP", "#f2c230", "#111", 1600, 360, `700 92px ${FD}`), roughness: 0.7 })), 3.6, 0.012, 0.6, 0, -Math.PI / 2);
+  return spec;
+};
+
+// ===== KEC International: transmission-line model, cable drums, site gear =====
+function pylon(p, x, z, h = 1.6) {
+  const g = grp(p, x, 0, z);
+  const steel = std({ color: 0xa9b1b8, metalness: 0.8, roughness: 0.4 });
+  const base = 0.2, top = 0.05;
+  const corner = (sx, sz, y) => {
+    const k = y / h;
+    const w = base + (top - base) * Math.min(1, k * 1.15);
+    return [sx * w, y, sz * w];
+  };
+  const C4 = [[1, 1], [-1, 1], [-1, -1], [1, -1]];
+  for (const [sx, sz] of C4) rod(g, corner(sx, sz, 0), corner(sx, sz, h), 0.008, steel, 5);
+  for (let y = 0; y < h; y += h / 9)
+    for (let i = 0; i < 4; i++) {
+      const [ax, az] = C4[i], [bx, bz] = C4[(i + 1) % 4];
+      rod(g, corner(ax, az, y), corner(bx, bz, y), 0.004, steel, 4);
+      rod(g, corner(ax, az, y), corner(bx, bz, y + h / 9), 0.003, steel, 4);
+    }
+  const tips = [];
+  [[0.62, 0.42], [0.78, 0.5], [0.94, 0.38]].forEach(([k, arm]) => {
+    const y = h * k;
+    for (const s of [-1, 1]) {
+      rod(g, [0, y, 0], [s * arm, y, 0], 0.006, steel, 4);
+      rod(g, [s * 0.05, y - 0.08, 0], [s * arm, y, 0], 0.004, steel, 4);
+      put(g, C(0.012, 0.012, 0.09, std({ color: 0x8fb3c9, roughness: 0.3 }), 8), s * arm, y - 0.05, 0);
+      tips.push(new THREE.Vector3(x + s * arm, y - 0.1, z));
+    }
+  });
+  rod(g, [0, h, 0], [0, h + 0.15, 0], 0.005, steel, 4);
+  return tips;
+}
+function cableDrum(p, x, z, ry = 0, cable = 0x1d1f22) {
+  const g = grp(p, x, 0, z, ry);
+  for (const s of [-0.42, 0.42]) put(g, C(0.75, 0.75, 0.06, M.woodLight, 32), s, 0.75, 0, 0, 0, Math.PI / 2);
+  put(g, C(0.55, 0.55, 0.78, std({ color: cable, roughness: 0.55 }), 32), 0, 0.75, 0, 0, 0, Math.PI / 2);
+  for (let i = 0; i < 9; i++) put(g, mesh(new THREE.TorusGeometry(0.55, 0.018, 6, 40), std({ color: cable, roughness: 0.5 })), -0.36 + i * 0.09, 0.75, 0, Math.PI / 2);
+  put(g, P(0.5, 0.18, std({ map: label("XLPE 132 kV", "#ffffff", "#1f2328", 512, 184, `700 70px ${FM}`) })), 0.46, 0.95, 0, Math.PI / 2);
+  blob(g, 1.8, 1.8);
+}
+const _kec = ROOMS.kec;
+ROOMS.kec = (c, f) => {
+  const spec = _kec(c, f);
+  const g = c.g;
+  // a power-line diorama on a plinth: two lattice pylons and sagging conductors
+  const d = grp(g, -5.6, 0, -2.4, 0.25);
+  put(d, B(3.6, 0.8, 1.5, M.white, 0.02), 0, 0.4, 0);
+  put(d, B(3.5, 0.05, 1.4, std({ color: 0x6f8f4f, roughness: 1 })), 0, 0.825, 0);
+  put(d, B(3.5, 0.02, 0.18, std({ color: 0x9a8b6b, roughness: 1 })), 0, 0.86, 0.35);
+  const top = grp(d, 0, 0.85, 0);
+  const a = pylon(top, -1.25, 0), b = pylon(top, 1.25, 0);
+  const cableMat = std({ color: 0x2a2d30, metalness: 0.6, roughness: 0.4 });
+  a.forEach((pa, i) => {
+    const pb = b[i];
+    const mid = pa.clone().lerp(pb, 0.5);
+    mid.y -= 0.22;
+    const curve = new THREE.QuadraticBezierCurve3(pa, mid, pb);
+    put(top, mesh(new THREE.TubeGeometry(curve, 24, 0.004, 4), cableMat), 0, 0, 0);
+  });
+  plaque(d, "MODEL · 400 kV DOUBLE-CIRCUIT TRANSMISSION LINE", 0, 0.62, 0.76, 0, 2.6);
+  blob(d, 4.2, 2.2);
+  cableDrum(g, -7.6, 4.8, 0.3);
+  cableDrum(g, -5.9, 5.6, -0.2, 0x7a3b1d);
+  // roll-up banner
+  const bn = grp(g, -8.3, 0, 0.3, Math.PI / 2 - 0.3);
+  put(bn, B(0.9, 0.08, 0.25, M.steelDark), 0, 0.04, 0);
+  put(bn, P(0.85, 2.1, std({ roughness: 0.7, map: cvt(425, 1050, (q, W, H) => {
+    q.fillStyle = "#0b2f5b";
+    q.fillRect(0, 0, W, H);
+    txt(q, "KEC", 30, 130, `800 140px ${FD}`, "#ffffff");
+    txt(q, "INTERNATIONAL", 32, 190, `700 46px ${FD}`, "#9cc3ff");
+    q.strokeStyle = "#ffffff";
+    q.lineWidth = 4;
+    q.beginPath();
+    q.moveTo(212, 330); q.lineTo(150, 700); q.moveTo(212, 330); q.lineTo(274, 700);
+    q.moveTo(130, 420); q.lineTo(294, 420); q.moveTo(110, 500); q.lineTo(314, 500); q.moveTo(130, 580); q.lineTo(294, 580);
+    q.stroke();
+    ["Power transmission", "Cables", "Railways", "Civil"].forEach((s, i) => txt(q, s, 32, 800 + i * 58, `500 36px ${FB}`, "#e8f0ff"));
+  }) })), 0, 1.13, 0.01);
+  // site gear on the desks: hard hats and rolled drawings
+  for (const [x, z] of [[1.5, -3.4], [4.5, -1.4], [1.5, 0.6], [4.5, 2.6]]) hardHat(g, x + 0.35, 0.76, z + 0.55);
+  for (const [x, z] of [[4.5, -3.4], [1.5, -1.4]]) for (let k = 0; k < 3; k++) put(g, C(0.03, 0.03, 0.7, std({ color: [0xe8e2d4, 0x9ec3e6, 0xf2f2f2][k] }), 10), x - 0.3, 0.8 + k * 0.03, z + 0.4 + k * 0.06, 0, 0, Math.PI / 2);
+  return spec;
+};
+
+// ===== APAC Insurance: an insurance broker's office =====
+function brochureRack(p, x, z, ry) {
+  const g = grp(p, x, 0, z, ry);
+  put(g, B(0.9, 1.5, 0.08, M.steelDark), 0, 0.75, -0.06);
+  const kinds = [["HEALTH", "#d94841"], ["MOTOR", "#2b59c3"], ["LIFE", "#3f8b4f"], ["HOME", "#c98a2b"], ["TRAVEL", "#7b4fc9"], ["BUSINESS", "#1f2328"]];
+  kinds.forEach(([k, col], i) => {
+    const x2 = -0.22 + (i % 2) * 0.44, y = 1.25 - Math.floor(i / 2) * 0.45;
+    put(g, B(0.4, 0.06, 0.08, M.glassTint), x2, y - 0.17, 0.02);
+    put(g, P(0.32, 0.42, std({ roughness: 0.6, map: cvt(320, 420, (q, W, H) => {
+      q.fillStyle = "#fff";
+      q.fillRect(0, 0, W, H);
+      q.fillStyle = col;
+      q.fillRect(0, 0, W, 170);
+      txt(q, k, 20, 120, `800 54px ${FD}`, "#fff");
+      txt(q, "INSURANCE", 22, 220, `700 34px ${FD}`, col);
+      txt(q, "Compare plans from", 22, 280, `400 22px ${FB}`, "#333");
+      txt(q, "leading insurers", 22, 310, `400 22px ${FB}`, "#333");
+      txt(q, "APAC Insurance Brokers", 22, H - 24, `600 18px ${FB}`, "#555");
+    }) })), x2, y, 0.03, 0, -0.12);
+  });
+  blob(g, 1.2, 0.6);
+}
+function coverDisplay(c, p, x, z, ry) {
+  const g = grp(p, x, 0, z, ry);
+  put(g, B(3.4, 0.9, 0.7, M.white, 0.02), 0, 0.45, 0);
+  // motor: a small car
+  const car = grp(g, -1.1, 0.9, 0);
+  put(car, B(0.6, 0.14, 0.28, std({ color: 0xb8322a, metalness: 0.6, roughness: 0.3 }), 0.04), 0, 0.12, 0);
+  put(car, B(0.32, 0.12, 0.24, std({ color: 0xb8322a, metalness: 0.6, roughness: 0.3 }), 0.04), -0.03, 0.24, 0);
+  put(car, B(0.3, 0.09, 0.245, M.glassTint, 0.03), -0.03, 0.245, 0);
+  for (const sx of [-0.19, 0.19]) for (const sz of [-0.14, 0.14]) put(car, C(0.06, 0.06, 0.04, M.black, 16), sx, 0.06, sz, 0, Math.PI / 2);
+  // home: a house
+  const house = grp(g, 0, 0.9, 0);
+  put(house, B(0.42, 0.3, 0.36, M.stone), 0, 0.15, 0);
+  put(house, mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.44, 3, 1), std({ color: 0x8a3b2a, roughness: 0.7 })), 0, 0.38, 0, 0, 0, Math.PI / 2).scale.set(1, 1, 0.75);
+  put(house, B(0.08, 0.14, 0.01, M.woodDark), 0, 0.07, 0.185);
+  // health: a red cross
+  const hc = grp(g, 1.1, 0.9, 0);
+  put(hc, B(0.36, 0.12, 0.08, M.red), 0, 0.25, 0);
+  put(hc, B(0.12, 0.36, 0.08, M.red), 0, 0.25, 0);
+  put(hc, C(0.05, 0.08, 0.07, M.steel, 12), 0, 0.035, 0);
+  [["MOTOR", -1.1], ["HOME", 0], ["HEALTH", 1.1]].forEach(([s, xx]) => plaque(g, s, xx, 0.7, 0.36, 0, 0.5));
+  put(g, P(3, 0.3, std({ map: label("WHAT WE COVER", "#1f2328", "#e9d9b4", 1600, 160, `700 90px ${FD}`) })), 0, 1.75, -0.2);
+  for (const sx of [-1.5, 1.5]) put(g, B(0.04, 0.9, 0.04, M.steelDark), sx, 1.35, -0.2);
+  blob(g, 3.8, 1.2);
+}
+function compareBoard(p, x, z, ry) {
+  const g = grp(p, x, 0, z, ry);
+  for (const sx of [-1, 1]) put(g, B(0.05, 1.9, 0.05, M.steel), sx * 1.15, 0.95, 0);
+  put(g, B(2.3, 1.3, 0.04, M.white, 0.01), 0, 1.4, 0);
+  put(g, P(2.2, 1.2, std({ roughness: 0.9, map: cvt(1100, 600, (q, W, H) => {
+    q.fillStyle = "#fbfbf8";
+    q.fillRect(0, 0, W, H);
+    q.font = `700 50px ${FH}`;
+    q.fillStyle = "#1d4ed8";
+    q.fillText("Client: family of 4 · health cover", 30, 60);
+    const cols = ["", "Insurer A", "Insurer B", "Insurer C"];
+    const rows = [["Premium /yr", "₹24k", "₹21k", "₹27k"], ["Sum insured", "₹10L", "₹10L", "₹15L"], ["Claim ratio", "92%", "88%", "95%"], ["Turnaround", "7 days", "12 days", "5 days"]];
+    q.strokeStyle = "#333";
+    q.lineWidth = 3;
+    cols.forEach((s, i) => txt(q, s, 40 + i * 260, 130, `700 40px ${FH}`, "#222"));
+    rows.forEach((r, j) => r.forEach((s, i) => txt(q, s, 40 + i * 260, 200 + j * 70, `500 40px ${FH}`, i === 3 ? "#15803d" : "#333")));
+    q.beginPath();
+    q.moveTo(30, 150); q.lineTo(W - 30, 150);
+    q.stroke();
+    q.strokeStyle = "#dc2626";
+    q.lineWidth = 5;
+    q.beginPath();
+    q.ellipse(40 + 3 * 260 + 80, 300, 130, 190, 0, 0, 7);
+    q.stroke();
+    txt(q, "Best fit → C", 760, 560, `700 46px ${FH}`, "#dc2626");
+  }) })), 0, 1.4, 0.022);
+  put(g, B(2, 0.04, 0.08, M.steelDark), 0, 0.76, 0.05);
+  for (const [i, col] of [0x1d4ed8, 0xdc2626, 0x111111].entries()) put(g, C(0.012, 0.012, 0.12, std({ color: col }), 8), -0.3 + i * 0.2, 0.79, 0.05, 0, 0, Math.PI / 2);
+  blob(g, 2.6, 0.8);
+}
+function filingCabinet(p, x, z, ry, tag) {
+  const g = grp(p, x, 0, z, ry);
+  put(g, B(0.5, 1.35, 0.62, std({ color: 0x7d8790, metalness: 0.5, roughness: 0.4 }), 0.01), 0, 0.675, 0);
+  for (let i = 0; i < 4; i++) {
+    put(g, B(0.46, 0.3, 0.01, std({ color: 0x8b959e, metalness: 0.5, roughness: 0.4 })), 0, 0.2 + i * 0.32, 0.315);
+    put(g, B(0.14, 0.02, 0.02, M.steel), 0, 0.27 + i * 0.32, 0.325);
+    put(g, P(0.12, 0.04, std({ map: label(tag + " " + (i + 1), "#ffffff", "#111", 512, 160, `600 70px ${FM}`) })), 0, 0.32 + i * 0.32, 0.322);
+  }
+  blob(g, 0.8, 0.9);
+}
+const _apac = ROOMS.apac;
+ROOMS.apac = (c, f) => {
+  const spec = _apac(c, f);
+  const g = c.g;
+  brochureRack(g, -1.2, 3.6, 0.35);
+  coverDisplay(c, g, -8.3, -1.2, Math.PI / 2);
+  compareBoard(g, -5.2, 1.2, 0.5);
+  [["POLICIES", -8.4, 3.4], ["CLAIMS", -8.4, 4.1], ["RENEWALS", -8.4, 4.8]].forEach(([t, x, z]) => filingCabinet(g, x, z, Math.PI / 2, t));
+  // the client desk: two client chairs, a proposal to sign, a calculator and a stamp
+  chair(g, -5.4, -4.5, Math.PI, M.fabricWarm);
+  chair(g, -4.6, -4.5, Math.PI, M.fabricWarm);
+  put(g, B(0.21, 0.004, 0.3, M.white), -5.0, 0.762, -3.75, 0.2);
+  put(g, P(0.2, 0.28, std({ map: cvt(200, 280, (q, W, H) => {
+    q.fillStyle = "#fff";
+    q.fillRect(0, 0, W, H);
+    txt(q, "POLICY PROPOSAL", 12, 26, `700 15px ${FB}`, "#0b2f5b");
+    for (let i = 0; i < 9; i++) {
+      q.fillStyle = "#bbb";
+      q.fillRect(12, 46 + i * 18, rnd(110, 176), 5);
+    }
+    q.strokeStyle = "#1d4ed8";
+    q.beginPath();
+    q.moveTo(20, 250); q.bezierCurveTo(60, 220, 90, 270, 140, 240);
+    q.stroke();
+  }) })), -5.0, 0.765, -3.75, 0.2, -Math.PI / 2);
+  put(g, B(0.1, 0.015, 0.16, M.charcoal, 0.005), -4.5, 0.768, -3.8, -0.2);
+  put(g, C(0.03, 0.035, 0.07, M.woodDark, 12), -5.6, 0.795, -3.7);
+  put(g, C(0.04, 0.04, 0.015, M.red, 16), -5.6, 0.765, -3.7);
+  return spec;
+};
+
+// ===== SIGMA: a print shop for merch =====
+function printCarousel(c, p, x, z) {
+  const g = grp(p, x, 0, z);
+  put(g, C(0.35, 0.45, 0.1, M.steelDark, 20), 0, 0.05, 0);
+  put(g, C(0.06, 0.06, 1.0, M.steel, 12), 0, 0.55, 0);
+  const head = grp(g, 0, 1.05, 0);
+  const inks = [0xf05a28, 0x2b59c3, 0x111111, 0xf2c230];
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2;
+    const arm = grp(head, 0, 0, 0, a);
+    put(arm, B(0.9, 0.04, 0.06, M.steelDark), 0.45, 0, 0);
+    put(arm, B(0.5, 0.03, 0.4, M.steel), 0.95, 0.02, 0);
+    put(arm, B(0.46, 0.05, 0.36, std({ color: inks[i], roughness: 0.7 })), 0.95, 0.06, 0);
+  }
+  const plat = grp(g, 0, 0.9, 0);
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+    const arm = grp(plat, 0, 0, 0, a);
+    put(arm, B(0.9, 0.04, 0.06, M.steelDark), 0.45, 0, 0);
+    put(arm, B(0.45, 0.02, 0.55, M.black), 0.95, 0.03, 0);
+    put(arm, B(0.4, 0.01, 0.5, std({ color: 0xffffff, roughness: 0.95 })), 0.95, 0.05, 0);
+  }
+  c.updates.push((dt) => (plat.rotation.y += dt * 0.15));
+  blob(g, 2.6, 2.6);
+}
+function mannequin(p, x, z, col, ry = 0) {
+  const g = grp(p, x, 0, z, ry);
+  put(g, C(0.2, 0.22, 0.03, M.steelDark, 20), 0, 0.015, 0);
+  put(g, C(0.02, 0.02, 1.0, M.steel, 8), 0, 0.5, 0);
+  const cloth = std({ color: col, roughness: 0.95 });
+  put(g, C(0.19, 0.16, 0.62, cloth, 20), 0, 1.3, 0);
+  put(g, S(0.2, cloth, 16, 10), 0, 1.6, 0).scale.set(1.2, 0.5, 0.75);
+  for (const s of [-1, 1]) put(g, C(0.06, 0.05, 0.55, cloth, 10), s * 0.25, 1.33, 0, 0, 0, s * 0.12);
+  put(g, mesh(new THREE.TorusGeometry(0.11, 0.05, 8, 16, Math.PI), cloth), 0, 1.66, -0.06, 0, -0.3);
+  put(g, B(0.16, 0.08, 0.01, std({ color: 0xffffff })), 0, 1.38, 0.155);
+  blob(g, 0.6, 0.6);
+}
+function heatPress(p, x, z, ry) {
+  const g = grp(p, x, 0, z, ry);
+  put(g, B(0.9, 0.75, 0.6, M.woodLight), 0, 0.375, 0);
+  put(g, B(0.5, 0.06, 0.4, M.black), 0, 0.8, 0.05);
+  put(g, B(0.08, 0.5, 0.08, M.steelDark), 0, 1.05, -0.22);
+  const lid = grp(g, 0, 1.28, -0.22);
+  lid.rotation.x = -0.6;
+  put(lid, B(0.08, 0.06, 0.4, M.steelDark), 0, 0, 0.2);
+  put(lid, B(0.5, 0.08, 0.4, M.steel), 0, -0.05, 0.42);
+  put(g, P(0.12, 0.05, basic(label("180°C", "#05121a", "#ff7a3d", 256, 110, `700 70px ${FM}`))), 0.32, 0.6, 0.301);
+  blob(g, 1.2, 1);
+}
+const _sigma = ROOMS.sigma;
+ROOMS.sigma = (c, f) => {
+  const spec = _sigma(c, f);
+  const g = c.g;
+  printCarousel(c, g, 0.6, 2.6);
+  mannequin(g, -6.2, -5.6, 0xf05a28, 0.3);
+  mannequin(g, -5.1, -5.9, 0x1f2328, 0.1);
+  mannequin(g, -4.0, -5.6, 0x2f5a8a, -0.2);
+  heatPress(g, -7.2, 2.2, Math.PI / 2);
+  // caps on a wall rail
+  const rw = wallFrame(g, "right", 18, 14);
+  for (let i = 0; i < 6; i++) {
+    const cap = grp(rw, 4.8 + (i % 3) * 0.55, 1.95 + Math.floor(i / 3) * 0.4, 0.12);
+    const col = std({ color: [0xf05a28, 0x1f2328, 0x2f5a8a, 0xffffff, 0x3f6b4f, 0xe8c547][i], roughness: 0.9 });
+    put(cap, mesh(new THREE.SphereGeometry(0.12, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), col), 0, 0, 0, 0, Math.PI / 2);
+    put(cap, B(0.2, 0.01, 0.12, col), 0, -0.08, 0.06, 0, 0.5);
+  }
+  return spec;
+};
+
+// ===== BITS Pilani: the clock tower model and a gear train =====
+function clockTower(c, p, x, z, ry) {
+  const g = grp(p, x, 0, z, ry);
+  put(g, B(1.2, 0.8, 1.2, M.white, 0.02), 0, 0.4, 0);
+  const sand = std({ color: 0xd9c2a0, roughness: 0.85 });
+  put(g, B(0.7, 0.25, 0.7, sand), 0, 0.925, 0);
+  put(g, B(0.46, 1.6, 0.46, sand), 0, 1.85, 0);
+  for (let i = 0; i < 6; i++) put(g, B(0.48, 0.02, 0.48, std({ color: 0xc4a983 })), 0, 1.15 + i * 0.25, 0);
+  const faceTex = cvt(256, 256, (q, W) => {
+    q.fillStyle = "#f6f1e4";
+    q.beginPath();
+    q.arc(W / 2, W / 2, W / 2 - 6, 0, 7);
+    q.fill();
+    q.strokeStyle = "#2b2b2b";
+    q.lineWidth = 8;
+    q.stroke();
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      q.fillStyle = "#2b2b2b";
+      q.fillRect(W / 2 + Math.sin(a) * 100 - 4, W / 2 - Math.cos(a) * 100 - 4, 8, 8);
+    }
+  });
+  const hands = [];
+  for (let i = 0; i < 4; i++) {
+    const side = grp(g, 0, 2.35, 0, (i * Math.PI) / 2);
+    put(side, mesh(new THREE.CircleGeometry(0.17, 32), std({ map: faceTex, roughness: 0.6 })), 0, 0, 0.232);
+    const hh = put(side, B(0.012, 0.09, 0.005, M.black), 0, 0, 0.236);
+    hh.geometry.translate(0, 0.045, 0);
+    const mh = put(side, B(0.008, 0.14, 0.005, M.black), 0, 0, 0.239);
+    mh.geometry.translate(0, 0.07, 0);
+    hands.push([hh, mh]);
+  }
+  put(g, B(0.56, 0.12, 0.56, sand), 0, 2.71, 0);
+  put(g, mesh(new THREE.SphereGeometry(0.25, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), sand), 0, 2.77, 0);
+  put(g, C(0.01, 0.03, 0.25, M.brass, 8), 0, 3.12, 0);
+  for (const [sx, sz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) put(g, C(0.02, 0.04, 0.18, sand, 8), sx * 0.24, 2.86, sz * 0.24);
+  c.updates.push(() => {
+    const d = new Date();
+    const m = d.getMinutes() + d.getSeconds() / 60;
+    const h = (d.getHours() % 12) + m / 60;
+    for (const [hh, mh] of hands) {
+      hh.rotation.z = -(h / 12) * Math.PI * 2;
+      mh.rotation.z = -(m / 60) * Math.PI * 2;
+    }
+  });
+  plaque(g, "BITS PILANI CLOCK TOWER · MODEL", 0, 0.6, 0.61, 0, 1.1);
+  blob(g, 1.8, 1.8);
+}
+function gearTrain(c, p, x, z, ry) {
+  const g = grp(p, x, 0, z, ry);
+  put(g, B(1.4, 1.1, 0.12, M.woodDark), 0, 1.15, -0.1);
+  for (const sx of [-0.6, 0.6]) put(g, B(0.06, 0.6, 0.3, M.woodDark), sx, 0.3, -0.1);
+  const gear = (r, teeth, gx, gy, speed) => {
+    const gg = grp(g, gx, gy, 0);
+    put(gg, C(r, r, 0.04, M.brass, 40), 0, 0, 0, 0, Math.PI / 2);
+    for (let i = 0; i < teeth; i++) {
+      const a = (i / teeth) * Math.PI * 2;
+      put(gg, B(0.03, 0.05, 0.04, M.brass), Math.sin(a) * (r + 0.02), Math.cos(a) * (r + 0.02), 0, 0, 0, -a);
+    }
+    put(gg, C(0.025, 0.025, 0.08, M.steel, 12), 0, 0, 0, 0, Math.PI / 2);
+    c.updates.push((dt) => (gg.rotation.z += dt * speed));
+  };
+  gear(0.28, 18, -0.3, 1.2, 0.5);
+  gear(0.16, 10, 0.17, 1.38, -0.9);
+  gear(0.12, 8, 0.3, 0.98, 1.2);
+  plaque(g, "GEAR TRAIN · B.E. MECHANICAL", 0, 0.62, 0.06, 0, 1);
+}
+const _bits = ROOMS.bits;
+ROOMS.bits = (c, f) => {
+  const spec = _bits(c, f);
+  clockTower(c, c.g, -5.2, -3.4, 0.4);
+  gearTrain(c, c.g, -3.8, 2.6, 0.3);
+  return spec;
+};
+
+// ===== alokbansal.com: everything a student needs to go abroad =====
+function suitcase(p, x, z, ry, col) {
+  const g = grp(p, x, 0, z, ry);
+  const shell = std({ color: col, roughness: 0.35, metalness: 0.2 });
+  put(g, B(0.45, 0.66, 0.26, shell, 0.04), 0, 0.39, 0);
+  for (let i = -1; i <= 1; i++) put(g, B(0.46, 0.02, 0.27, shell), 0, 0.39 + i * 0.18, 0);
+  for (const sx of [-0.07, 0.07]) rod(g, [sx, 0.72, -0.1], [sx, 1.05, -0.1], 0.008, M.steel);
+  put(g, B(0.18, 0.025, 0.03, M.black), 0, 1.05, -0.1);
+  for (const sx of [-0.17, 0.17]) put(g, C(0.03, 0.03, 0.03, M.black, 10), sx, 0.03, 0.08, 0, 0, Math.PI / 2);
+  ["#d94841", "#2b59c3", "#3f8b4f"].forEach((s, i) =>
+    put(g, mesh(new THREE.CircleGeometry(0.05, 16), std({ map: label(["LDN", "YYZ", "MEL"][i], s, "#fff", 128, 128, `700 44px ${FB}`) })), -0.12 + i * 0.12, 0.45 + (i % 2) * 0.12, 0.131)
+  );
+  blob(g, 0.7, 0.5);
+}
+function gradDisplay(p, x, z, ry) {
+  const g = grp(p, x, 0, z, ry);
+  put(g, B(0.8, 1.0, 0.8, M.white, 0.02), 0, 0.5, 0);
+  const black = std({ color: 0x15171a, roughness: 0.8 });
+  put(g, C(0.12, 0.13, 0.08, black, 20), -0.1, 1.04, 0);
+  put(g, B(0.34, 0.015, 0.34, black), -0.1, 1.09, 0, 0.6);
+  rod(g, [-0.1, 1.1, 0], [0.06, 1.0, 0.12], 0.006, M.yellow);
+  put(g, C(0.03, 0.03, 0.34, std({ color: 0xf3ead6, roughness: 0.8 }), 12), 0.18, 1.03, -0.05, 0.6, 0, Math.PI / 2);
+  put(g, mesh(new THREE.TorusGeometry(0.032, 0.006, 6, 16), M.red), 0.18, 1.03, -0.05, 0.6 + Math.PI / 2);
+  plaque(g, "ADMITS · CLASS OF 2026", 0, 0.75, 0.41, 0, 0.7);
+  blob(g, 1.2, 1.2);
+}
+const _ab = ROOMS.alokbansal;
+ROOMS.alokbansal = (c, f) => {
+  const spec = _ab(c, f);
+  const g = c.g;
+  suitcase(g, 5.2, 2.8, 0.3, 0xd94841);
+  suitcase(g, 5.8, 3.3, -0.2, 0x2b59c3);
+  suitcase(g, 6.4, 2.7, 0.5, 0x2b2b2b);
+  gradDisplay(g, 1.6, 3.0, 0.2);
+  // passports and visa stamps on the counsellors' desks
+  for (const [x, z] of [[-6.5, -3.5], [-4, -3.5], [-6.5, 0], [-4, 0]]) {
+    put(g, B(0.09, 0.012, 0.13, std({ color: 0x5a1a1a, roughness: 0.7 })), x + 0.55, 0.766, z + 0.25, rnd(-0.4, 0.4));
+    put(g, B(0.09, 0.012, 0.13, std({ color: 0x0b2f5b, roughness: 0.7 })), x + 0.6, 0.778, z + 0.2, rnd(-0.4, 0.4));
+  }
+  brochureStand(g, -8.2, 3.4, Math.PI / 2, ["Imperial", "Toronto", "Melbourne", "TU Munich", "Trinity", "Boston"]);
+  return spec;
+};
+function brochureStand(p, x, z, ry, names) {
+  const g = grp(p, x, 0, z, ry);
+  put(g, B(0.7, 1.4, 0.06, M.woodLight), 0, 0.7, -0.05);
+  names.forEach((n, i) => {
+    const x2 = -0.17 + (i % 2) * 0.34, y = 1.15 - Math.floor(i / 2) * 0.42;
+    put(g, P(0.28, 0.38, std({ roughness: 0.6, map: cvt(280, 380, (q, W, H) => {
+      q.fillStyle = "#0b3b5c";
+      q.fillRect(0, 0, W, H);
+      q.fillStyle = "#ffd27a";
+      q.fillRect(0, H - 90, W, 90);
+      txt(q, n, 18, 80, `800 40px ${FD}`, "#fff");
+      txt(q, "Programs · Fees", 18, 130, `400 22px ${FB}`, "#cfe3f3");
+      txt(q, "Apply with us", 18, H - 40, `700 26px ${FB}`, "#0b3b5c");
+    }) })), x2, y, 0.0, 0, -0.1);
+  });
+  blob(g, 1, 0.6);
+}
+
+// ===== project floors: one real object for each build =====
+function coinStacks(p, x, z, ry) {
+  const g = grp(p, x, 0, z, ry);
+  put(g, B(1.6, 0.9, 0.6, M.white, 0.02), 0, 0.45, 0);
+  const gold = std({ color: 0xd4a93c, metalness: 1, roughness: 0.3 });
+  for (let i = 0; i < 6; i++) {
+    const n = 3 + i * 4;
+    for (let k = 0; k < n; k++) put(g, C(0.07, 0.07, 0.018, gold, 24), -0.62 + i * 0.25, 0.91 + k * 0.019, rnd(-0.005, 0.005));
+  }
+  const sap = grp(g, 0.63, 0.91 + 23 * 0.019, 0);
+  put(sap, C(0.006, 0.008, 0.12, M.green, 6), 0, 0.06, 0);
+  for (let i = 0; i < 4; i++) put(sap, S(0.04, M.leaf2, 8, 6), Math.cos(i * 1.6) * 0.04, 0.13, Math.sin(i * 1.6) * 0.04).scale.set(1, 0.5, 1);
+  plaque(g, "SIP · ₹2,000 A MONTH, COMPOUNDING", 0, 0.68, 0.31, 0, 1.4);
+  blob(g, 2, 1);
+}
+function worldClocks(c, p, x, z, ry) {
+  const g = grp(p, x, 0, z, ry);
+  put(g, B(4.2, 2.6, 0.12, M.charcoal), 0, 1.6, 0);
+  for (const sx of [-2, 2]) put(g, B(0.4, 0.3, 0.5, M.charcoal), sx, 0.15, 0);
+  const zones = [["MUMBAI", "Asia/Kolkata"], ["LONDON", "Europe/London"], ["NEW YORK", "America/New_York"], ["TOKYO", "Asia/Tokyo"]];
+  const face = cvt(256, 256, (q, W) => {
+    q.fillStyle = "#fbfbf8";
+    q.beginPath();
+    q.arc(W / 2, W / 2, W / 2 - 8, 0, 7);
+    q.fill();
+    q.lineWidth = 10;
+    q.strokeStyle = "#1b1d20";
+    q.stroke();
+    for (let i = 0; i < 60; i++) {
+      const a = (i / 60) * Math.PI * 2, l = i % 5 ? 8 : 20;
+      q.lineWidth = i % 5 ? 2 : 5;
+      q.beginPath();
+      q.moveTo(W / 2 + Math.sin(a) * 104, W / 2 - Math.cos(a) * 104);
+      q.lineTo(W / 2 + Math.sin(a) * (104 - l), W / 2 - Math.cos(a) * (104 - l));
+      q.stroke();
+    }
+  });
+  const hands = zones.map(([name, tz], i) => {
+    const cx = -1.5 + i * 1.0;
+    put(g, C(0.36, 0.36, 0.06, M.steel, 40), cx, 1.85, 0.08, 0, Math.PI / 2);
+    put(g, mesh(new THREE.CircleGeometry(0.32, 40), std({ map: face, roughness: 0.6 })), cx, 1.85, 0.115);
+    put(g, P(0.8, 0.16, basic(label(name, "#1b1d20", "#e3b96c", 512, 100, `700 56px ${FM}`))), cx, 1.36, 0.065);
+    const mk = (w, l, mat, dz) => {
+      const m = put(g, B(w, l, 0.006, mat), cx, 1.85, 0.12 + dz);
+      m.geometry.translate(0, l / 2 - 0.03, 0);
+      return m;
+    };
+    return [mk(0.022, 0.18, M.black, 0), mk(0.014, 0.27, M.black, 0.004), mk(0.006, 0.28, M.red, 0.008), tz];
+  });
+  put(g, P(3.6, 0.35, basic(label("MARKETS NEVER SLEEP · TRADEPIPS", "#1b1d20", "#7ee787", 2048, 200, `700 100px ${FD}`))), 0, 2.65, 0.065);
+  const fmt = {};
+  c.updates.push(() => {
+    const now = new Date();
+    for (const [hh, mh, sh, tz] of hands) {
+      fmt[tz] ||= new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "numeric", minute: "numeric", second: "numeric", hourCycle: "h23" });
+      const [h, m, s] = fmt[tz].format(now).split(":").map(Number);
+      hh.rotation.z = -(((h % 12) + m / 60) / 12) * Math.PI * 2;
+      mh.rotation.z = -((m + s / 60) / 60) * Math.PI * 2;
+      sh.rotation.z = -(s / 60) * Math.PI * 2;
+    }
+  });
+  blob(g, 4.6, 0.8);
+}
+function serverRack(c, p, x, z, ry) {
+  const g = grp(p, x, 0, z, ry);
+  put(g, B(0.7, 2.1, 0.9, M.black, 0.01), 0, 1.05, 0);
+  const leds = [];
+  for (let u = 0; u < 12; u++) {
+    put(g, B(0.62, 0.13, 0.02, M.charcoal), 0, 0.2 + u * 0.15, 0.46);
+    for (let k = 0; k < 3; k++) leds.push(put(g, S(0.008, k ? M.greenLed : M.bulb, 6, 4), -0.26 + k * 0.03, 0.22 + u * 0.15, 0.475));
+  }
+  c.updates.push((dt, t) => leds.forEach((l, i) => (l.visible = Math.sin(t * (3 + (i % 7)) + i) > -0.2)));
+  blob(g, 1.1, 1.3);
+}
+function trophy(p, x, y, z) {
+  const pts = [[0, 0], [0.07, 0], [0.07, 0.02], [0.025, 0.04], [0.02, 0.12], [0.03, 0.14], [0.09, 0.2], [0.1, 0.3], [0.0, 0.3]].map(([a, b]) => new THREE.Vector2(a, b));
+  put(p, mesh(new THREE.LatheGeometry(pts, 24), std({ color: 0xd4a93c, metalness: 1, roughness: 0.25 })), x, y, z);
+}
+function ringLight(p, x, z, ry) {
+  const g = grp(p, x, 0, z, ry);
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2;
+    rod(g, [Math.cos(a) * 0.35, 0, Math.sin(a) * 0.35], [0, 0.8, 0], 0.012, M.black);
+  }
+  rod(g, [0, 0.8, 0], [0, 1.6, 0], 0.015, M.black);
+  put(g, mesh(new THREE.TorusGeometry(0.28, 0.035, 10, 40), M.lightPanel), 0, 1.6, 0);
+  put(g, B(0.08, 0.15, 0.01, M.black, 0.005), 0, 1.6, 0.01);
+  const l = new THREE.PointLight(0xfff4e6, 3, 3, 2);
+  l.position.set(0, 1.6, 0.3);
+  g.add(l);
+}
+function vrHeadset(p, x, y, z, ry) {
+  const g = grp(p, x, y, z, ry);
+  put(g, B(0.2, 0.11, 0.1, M.white, 0.04), 0, 0.06, 0);
+  put(g, B(0.19, 0.09, 0.02, M.black, 0.01), 0, 0.06, 0.055);
+  put(g, mesh(new THREE.TorusGeometry(0.11, 0.012, 6, 24, Math.PI), M.charcoal), 0, 0.06, -0.05, 0, Math.PI / 2, Math.PI / 2);
+}
+function posTerminal(p, x, y, z, ry) {
+  const g = grp(p, x, y, z, ry);
+  put(g, B(0.09, 0.03, 0.18, M.charcoal, 0.01), 0, 0.015, 0);
+  put(g, P(0.07, 0.06, basic(label("₹ PAY", "#0b1220", "#60a5fa", 256, 220, `700 80px ${FB}`))), 0, 0.031, -0.04, 0, -Math.PI / 2);
+  put(g, B(0.2, 0.08, 0.16, M.white, 0.02), 0.22, 0.04, 0);
+  put(g, B(0.08, 0.002, 0.22, M.white), 0.22, 0.09, 0.1, 0, -0.9);
+}
+const _proj = roomProject;
+roomProject = (c, f) => {
+  const spec = _proj(c, f);
+  const g = c.g;
+  const id = f.id;
+  if (id === "nivesh") coinStacks(g, 0.6, -4.8, 0.2);
+  else if (id === "tradepips") worldClocks(c, g, -8.6, 0.6, Math.PI / 2);
+  else if (id === "hackerclub") {
+    serverRack(c, g, 7.6, 4.6, -Math.PI / 2);
+    serverRack(c, g, 7.6, 3.8, -Math.PI / 2);
+    trophy(g, 2.95, 0.76, -1.75);
+  } else if (id === "dataworld") vrHeadset(g, 2.6, 0.9, -0.6, 0.6);
+  else if (id === "snapvanish") ringLight(g, 4.7, -0.6, -0.8);
+  else if (id === "einvoice") posTerminal(g, 2.5, 0.775, -1.2, 0.3);
+  else if (id === "marketplace") brochureStand(g, 0.8, -4.6, 0.3, ["UK", "USA", "Canada", "Australia", "Germany", "Ireland"]);
+  return spec;
+};
+
 // ---------- outside: sky, sun, desert city, lake and fountains ----------
 const skyU = {
   top: { value: new THREE.Color() },
@@ -3002,6 +3697,12 @@ scene.add(sky);
 const hemi = new THREE.HemisphereLight(0xffffff, 0xc9a77a, 1);
 const sun = new THREE.DirectionalLight(0xffffff, 2);
 scene.add(hemi, sun, sun.target);
+sun.castShadow = true;
+sun.shadow.mapSize.set(4096, 4096);
+Object.assign(sun.shadow.camera, { left: -1100, right: 1100, top: 1100, bottom: -1100, near: 10, far: 6000 });
+sun.shadow.camera.updateProjectionMatrix();
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 1.5;
 
 // ---------- glass that reflects the real sky ----------
 // A cube map of the current sky, rebuilt as the time of day changes, so towers and the lake
@@ -3354,7 +4055,9 @@ function buildFountains(L) {
 function buildOutside() {
   const ground = mesh(new THREE.PlaneGeometry(24000, 24000), std({ map: rep(T.sand, 300, 300), roughness: 1 }));
   put(scene, ground, 0, -0.05, 0, 0, -Math.PI / 2);
+  ground.receiveShadow = true;
   put(scene, mesh(new THREE.CircleGeometry(150, 64), std({ map: rep(T.paving, 60, 60), roughness: 0.85 })), 0, 0.01, 0, 0, -Math.PI / 2);
+  scene.children[scene.children.length - 1].receiveShadow = true;
   // the lake in front of the windows, with fountains that dance
   const LAKE = { x: 30, z: -330, r: 180 };
   buildLake(LAKE);
@@ -3470,6 +4173,7 @@ function buildOutside() {
     tower(Math.cos(a) * r, Math.sin(a) * r, tall ? rnd(80, 220) : rnd(10, 55), rnd(20, 44), rnd(20, 44), tall ? "glass" : "stone");
   }
   for (const im of Object.values(sets)) {
+    im.castShadow = im.receiveShadow = true;
     im.instanceMatrix.needsUpdate = true;
     if (im.instanceColor) im.instanceColor.needsUpdate = true;
     im.computeBoundingSphere();
@@ -3481,6 +4185,7 @@ function buildOutside() {
     const x = Math.cos(a) * r, z = Math.sin(a) * r;
     if (Math.abs(x) < 20 && Math.abs(z) < 16) continue;
     const p = grp(scene, x, 0, z, rnd(6));
+    p.userData.palm = true;
     const ht = rnd(7, 11);
     put(p, C(0.22, 0.35, ht, trunk, 8), 0, ht / 2, 0, 0, rnd(-0.06, 0.06));
     for (let k = 0; k < 9; k++) {
@@ -3589,6 +4294,10 @@ function buildExterior() {
     band.userData.floor = i;
     bands.push(band);
   });
+  exterior.traverse((o) => {
+    if (o.isMesh) o.castShadow = o.receiveShadow = !o.material.transparent;
+  });
+  scene.traverse((o) => o.userData.palm && o.traverse((m) => m.isMesh && (m.castShadow = true)));
   scene.add(exterior);
 }
 const bands = [];
@@ -3673,6 +4382,7 @@ function focusFloor(i) {
 }
 function setOutsideMode() {
   mode = "outside";
+  sun.castShadow = true;
   exterior.visible = true;
   if (room) {
     disposeRoom(room);
@@ -3690,6 +4400,7 @@ addEventListener("tower:fly-in", (e) => {
 });
 addEventListener("tower:go", (e) => {
   mode = "inside";
+  sun.castShadow = false;
   flying = false;
   exterior.visible = false;
   buildRoom(e.detail.index);
