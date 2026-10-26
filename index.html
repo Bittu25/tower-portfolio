@@ -3773,10 +3773,11 @@ const FACADE_GLSL = {
     span = mix(span, 0.07, far);
     fGlass = wall * (1.0 - fin) * (1.0 - mech);
     fWin = fGlass * (1.0 - span);
-    vec3 col = mix(vec3(0.66, 0.74, 0.82), vec3(0.58, 0.64, 0.71), span);
-    col = mix(col, vec3(0.93, 0.95, 0.97), fin);
-    col = mix(col, vec3(0.24, 0.27, 0.3), mech);
-    diffuseColor.rgb = mix(vec3(0.62, 0.64, 0.67), col, wall);`,
+    // tinted blue-grey glass that mirrors the sky darker than it is, brushed (not white) steel fins
+    vec3 col = mix(vec3(0.3, 0.37, 0.45), vec3(0.2, 0.24, 0.29), span);
+    col = mix(col, vec3(0.56, 0.59, 0.63), fin);
+    col = mix(col, vec3(0.13, 0.15, 0.17), mech);
+    diffuseColor.rgb = mix(vec3(0.42, 0.44, 0.47), col, wall);`,
 };
 function facadeMaterial(kind, o = {}) {
   const m = reflectSky(new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.25, roughness: 0.6, ...o }));
@@ -3813,8 +3814,10 @@ function facadeMaterial(kind, o = {}) {
           ${FACADE_GLSL[kind]}
           // lights come on in office-sized runs (5 bays along one floor), and blur to a soft glow far away
           float wh = fract(sin(dot(vec2(floor(cell.x / 5.0), floor(cell.y)) + vFSeed * 91.7, vec2(127.1, 311.7))) * 43758.5453);
-          float fLit = fWin * step(0.6, wh) * (0.6 + 0.4 * fract(wh * 13.7));
-          fLit = mix(fLit, fWin * 0.4, far);`
+          // about a quarter of offices lit, each window a little different, never blown out to white
+          float wi = fract(sin(dot(floor(cell), vec2(41.3, 289.1))) * 15731.7);
+          float fLit = fWin * step(0.74, wh) * (0.45 + 0.55 * wi);
+          fLit = mix(fLit, fWin * 0.16, far);`
         )
         .replace(
           "#include <metalnessmap_fragment>",
@@ -3825,7 +3828,7 @@ function facadeMaterial(kind, o = {}) {
         .replace(
           "#include <emissivemap_fragment>",
           `#include <emissivemap_fragment>
-          totalEmissiveRadiance += vec3(1.0, 0.8, 0.55) * fLit * uNight * 1.3;`
+          totalEmissiveRadiance += vec3(1.0, 0.7, 0.4) * fLit * uNight * 0.6;`
         );
   };
   return m;
@@ -3875,7 +3878,8 @@ function applyMood(metres) {
   scene.fog.color.copy(m.fog);
   scene.fog.near = 150 + metres * 0.6;
   scene.fog.far = 3800 + metres * 3;
-  facadeU.uNight.value = m.win;
+  // office lights stay off in daylight and come on from dusk
+  facadeU.uNight.value = clamp((m.win - 0.35) / 1.25, 0, 1);
   refreshSkyEnv(metres);
   carMat.emissiveIntensity = m.win * 0.9;
   for (const c of cloudMats) c.color.copy(white).lerp(m.sun, 0.45).lerp(m.top, m.stars * 0.5);
@@ -4243,7 +4247,8 @@ const gate = new THREE.Group();
 let extBeacon;
 function buildExterior() {
   // silver glass with steel fins, drawn to scale by the facade shader; it reflects the live sky
-  const towerGlass = facadeMaterial(2, { metalness: 0.45, roughness: 0.3 });
+  const towerGlass = facadeMaterial(2, { metalness: 0.85, roughness: 0.34, envMapIntensity: 0.85 });
+  const ledge = std({ color: 0x50575e, metalness: 0.8, roughness: 0.55 });
   const glassMat = () => towerGlass;
   for (let k = 0; k < TIERS; k++) {
     const y0 = k * TH, ww = 30 - k * 0.5;
@@ -4258,7 +4263,7 @@ function buildExterior() {
       const dx = Math.cos(a), dz = Math.sin(a);
       put(exterior, B(len, TH, ww, glassMat(Math.max(1, Math.round(len / 14)), TH / 60)), (dx * len) / 2, y0 + TH / 2, (dz * len) / 2, -a);
       put(exterior, C(ww / 2, ww / 2, TH, glassMat(Math.max(1, Math.round((ww * 1.6) / 14)), TH / 60), 24), dx * len, y0 + TH / 2, dz * len);
-      put(exterior, B(len + ww / 2, 0.9, ww + 0.8, M.steel), (dx * (len + ww / 4)) / 2, y0 + TH, (dz * (len + ww / 4)) / 2, -a);
+      put(exterior, B(len + ww / 2, 0.9, ww + 0.8, ledge), (dx * (len + ww / 4)) / 2, y0 + TH, (dz * (len + ww / 4)) / 2, -a);
     }
     const rc = 20 - k * 0.36;
     put(exterior, C(rc, rc, TH, glassMat(4, TH / 60), 6), 0, y0 + TH / 2, 0);
@@ -4268,7 +4273,7 @@ function buildExterior() {
     put(exterior, C(r * 0.92, r, h, glassMat(2, h / 60), 6), 0, y + h / 2, 0);
     return y + h;
   }, EH);
-  put(exterior, C(0.35, 3.4, TOP - 700, M.steel, 12), 0, 700 + (TOP - 700) / 2, 0);
+  put(exterior, C(0.35, 3.4, TOP - 700, ledge, 12), 0, 700 + (TOP - 700) / 2, 0);
   extBeacon = put(exterior, S(1.8, M.redLed, 12, 8), 0, TOP + 1, 0);
 
   // the entrance between two wings, facing the lake
