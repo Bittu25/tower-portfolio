@@ -1,0 +1,3615 @@
+<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta charset="utf-8">
+<title>Gaurav Agarwal Tower</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Gaurav Agarwal's portfolio as an 828 m tower: ride the lift from the lobby to the spire and step out on every floor.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Caveat:wght@500;700&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: first-person view from inside the tower. Lift panel on the left, floor card on the right
+   (a bottom sheet on phones), steel lift doors that close over the whole view between floors.
+   One deliberate look: dark glass instruments with brass, over rooms that are lit like real interiors. */
+:root {
+  --glass: rgba(10, 17, 30, 0.74);
+  --glass-hi: rgba(18, 28, 46, 0.9);
+  --fg: #eef2f6;
+  --mute: #a3b2c4;
+  --line: rgba(214, 226, 240, 0.16);
+  --brass: #e3b96c;
+  --brass-ink: #1d1407;
+  --led: #ffb547;
+  --steel-1: #7f8890;
+  --steel-2: #c9d0d6;
+  --steel-3: #9ba4ad;
+  --cabin: #17191c;
+  --font-display: "Big Shoulders Display", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --font-body: "Instrument Sans", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --gutter-l: max(16px, env(safe-area-inset-left, 0px));
+  --gutter-r: max(16px, env(safe-area-inset-right, 0px));
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  background: var(--cabin);
+  color: var(--fg);
+  font: 15px/1.5 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+#scene { position: fixed; inset: 0; }
+#scene canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+#scene canvas:active { cursor: grabbing; }
+::selection { background: var(--brass); color: var(--brass-ink); }
+:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+a { color: inherit; }
+
+.glass {
+  background: var(--glass);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  box-shadow: 0 10px 40px rgba(4, 8, 16, 0.35);
+}
+
+/* ---------- lift doors (seen from inside the cabin) ---------- */
+.lift { position: fixed; inset: 0; z-index: 15; pointer-events: none; overflow: hidden; }
+.door {
+  position: absolute; top: 0; bottom: 0; width: 50.4%;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 3px),
+    linear-gradient(90deg, var(--steel-1), var(--steel-2) 38%, var(--steel-3) 62%, var(--steel-1));
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25), inset 0 30px 60px rgba(0, 0, 0, 0.35), inset 0 -40px 60px rgba(0, 0, 0, 0.3);
+  transition: transform 0.95s cubic-bezier(0.65, 0, 0.3, 1);
+  pointer-events: auto;
+}
+.door.l { left: 0; border-right: 2px solid rgba(0, 0, 0, 0.45); }
+.door.r { right: 0; border-left: 1px solid rgba(255, 255, 255, 0.25); }
+.lift[data-state="open"] .door { pointer-events: none; }
+.lift[data-state="open"] .door.l { transform: translateX(-101%); }
+.lift[data-state="open"] .door.r { transform: translateX(101%); }
+.lift-head {
+  position: absolute; left: 50%; top: calc(18px + env(safe-area-inset-top, 0px)); transform: translateX(-50%);
+  display: flex; align-items: center; gap: 12px; padding: 8px 18px; border-radius: 6px;
+  background: #0a0a0b; border: 1px solid #2a2c30; box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.8), 0 4px 18px rgba(0, 0, 0, 0.4);
+  font: 600 30px/1 var(--font-mono); color: var(--led); text-shadow: 0 0 10px rgba(255, 181, 71, 0.7);
+  font-variant-numeric: tabular-nums; transition: opacity 0.4s;
+}
+.lift-head .arrow { font-size: 18px; opacity: 0.35; }
+.lift.moving .lift-head .arrow { opacity: 1; animation: blink 0.7s steps(2) infinite; }
+.lift[data-state="open"] .lift-head { opacity: 0; }
+.lift-msg {
+  position: absolute; left: 50%; bottom: calc(18% + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  font: 500 12px/1.4 var(--font-mono); letter-spacing: 0.16em; text-transform: uppercase; color: rgba(20, 24, 28, 0.75);
+  text-align: center; transition: opacity 0.3s; white-space: nowrap;
+}
+.lift[data-state="open"] .lift-msg { opacity: 0; }
+.lift.moving .door { animation: hum 0.18s linear infinite alternate; }
+@keyframes hum { from { margin-top: 0; } to { margin-top: 1px; } }
+@keyframes blink { 50% { opacity: 0.3; } }
+
+/* ---------- top bar ---------- */
+.top {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 30;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: calc(14px + env(safe-area-inset-top, 0px)) var(--gutter-r) 0 var(--gutter-l);
+  pointer-events: none;
+}
+.top > * { pointer-events: auto; }
+.top-right { display: flex; gap: 8px; }
+.brand { display: flex; align-items: baseline; gap: 10px; padding: 8px 14px; border-radius: 10px; text-decoration: none; }
+.brand b { font: 800 22px/1 var(--font-display); letter-spacing: 0.02em; text-transform: uppercase; }
+.brand span { font: 400 12px/1 var(--font-mono); color: var(--mute); }
+.pill {
+  display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 999px;
+  font-weight: 600; font-size: 14px; border: 1px solid var(--line);
+}
+.pill svg { width: 14px; height: 14px; flex: none; }
+.tour-btn { background: var(--brass); color: var(--brass-ink); border-color: transparent; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25); }
+.tour-btn:hover { filter: brightness(1.06); }
+.sound-btn { padding: 10px 12px; }
+.sound-btn[aria-pressed="true"] { color: var(--brass); }
+
+/* ---------- lift panel ---------- */
+.elevator {
+  position: fixed; z-index: 20; left: var(--gutter-l); top: calc(80px + env(safe-area-inset-top, 0px));
+  bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+  width: 156px; display: flex; flex-direction: column; gap: 12px;
+}
+.readout { border-radius: 12px; padding: 12px 14px 10px; }
+.readout .lbl { font: 500 10px/1 var(--font-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--mute); }
+.readout .num {
+  font: 800 64px/0.95 var(--font-display); color: var(--brass); font-variant-numeric: tabular-nums;
+  margin-top: 6px; text-shadow: 0 0 18px rgba(227, 185, 108, 0.35);
+}
+.readout .alt { font: 400 12px/1.2 var(--font-mono); color: var(--fg); margin-top: 6px; font-variant-numeric: tabular-nums; }
+.rail {
+  flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none;
+  display: flex; flex-direction: column-reverse; justify-content: flex-start; gap: 6px;
+  border-radius: 12px; padding: 8px 6px;
+}
+.rail::-webkit-scrollbar { display: none; }
+.zone { display: flex; flex-direction: column-reverse; gap: 1px; }
+.zone h3 {
+  margin: 0; padding: 4px 6px 2px; font: 500 9.5px/1.2 var(--font-mono); letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--mute);
+}
+.stop {
+  display: flex; align-items: center; gap: 8px; width: 100%; padding: 2px 6px; border: 0; border-radius: 6px;
+  background: transparent; text-align: left; font-size: 12px; line-height: 1.25; color: var(--mute);
+}
+.stop i { flex: none; order: 0; width: 26px; font: 500 10.5px/1 var(--font-mono); font-style: normal; text-align: right; font-variant-numeric: tabular-nums; }
+.stop::before { content: ""; flex: none; order: 1; width: 7px; height: 7px; border-radius: 50%; border: 1px solid currentColor; opacity: 0.7; }
+.stop span { order: 2; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stop:hover { color: var(--fg); background: rgba(255, 255, 255, 0.06); }
+.stop[aria-current="true"] { color: var(--fg); background: rgba(227, 185, 108, 0.14); }
+.stop[aria-current="true"]::before { background: var(--brass); border-color: var(--brass); opacity: 1; box-shadow: 0 0 8px var(--brass); }
+.stop[aria-current="true"] i { color: var(--brass); }
+
+/* ---------- floor card ---------- */
+.card {
+  position: fixed; z-index: 20; right: var(--gutter-r); top: calc(80px + env(safe-area-inset-top, 0px));
+  width: min(390px, calc(100vw - 32px));
+  max-height: calc(100% - 80px - 28px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  overflow-y: auto; border-radius: 16px; outline: none; overscroll-behavior: contain;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+body.riding .card { opacity: 0; transform: translateY(12px); pointer-events: none; }
+.card-inner { padding: 22px 22px 18px; display: flex; flex-direction: column; gap: 14px; }
+.card.min .card-inner > :not(.head) { display: none; }
+.head { display: flex; flex-direction: column; gap: 10px; }
+.head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.min-btn {
+  flex: none; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.05);
+  font: 500 11px/1.2 var(--font-mono); color: var(--mute);
+}
+.min-btn:hover { color: var(--fg); }
+.progress { position: sticky; top: 0; height: 3px; z-index: 1; }
+.progress b { display: block; height: 100%; width: 0; background: var(--brass); }
+.progress.run b { animation: fill var(--step, 9s) linear forwards; }
+@keyframes fill { to { width: 100%; } }
+.eyebrow {
+  margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  font: 500 11px/1.2 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--mute);
+}
+.eyebrow .lvl { color: var(--brass-ink); background: var(--brass); padding: 3px 7px; border-radius: 4px; letter-spacing: 0.06em; }
+.card h2 { margin: 0; font: 800 40px/0.98 var(--font-display); letter-spacing: 0.01em; text-transform: uppercase; text-wrap: balance; }
+.card .sub { margin: 0; color: var(--mute); font-size: 14px; }
+.stats {
+  margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 1px; border-radius: 10px; overflow: hidden;
+  background: var(--line); border: 1px solid var(--line);
+}
+.stats div { background: var(--glass-hi); padding: 10px 12px; display: flex; flex-direction: column-reverse; min-width: 0; }
+.stats div.wide { grid-column: span 2; }
+.stats dt { font: 400 10.5px/1.3 var(--font-mono); letter-spacing: 0.05em; text-transform: uppercase; color: var(--mute); margin-top: 3px; }
+.stats dd { margin: 0; font: 800 24px/1 var(--font-display); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.body { margin: 0; font-size: 15px; line-height: 1.6; max-width: 62ch; }
+.list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.list li { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; }
+.list li b { grid-column: 2; font-weight: 600; }
+.list li span { grid-column: 2; color: var(--mute); font-size: 13.5px; }
+.list li em { grid-row: span 2; font: 500 11px/1.9 var(--font-mono); font-style: normal; color: var(--brass); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips span { font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.04); }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 9px 15px; border-radius: 999px;
+  font-size: 14px; font-weight: 600; text-decoration: none; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.06);
+}
+.btn:hover { background: rgba(255, 255, 255, 0.12); }
+.btn.primary { background: var(--brass); color: var(--brass-ink); border-color: transparent; }
+.btn.primary:hover { filter: brightness(1.06); }
+.email { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.email code {
+  user-select: all; -webkit-user-select: all; font: 400 13px/1 var(--font-mono); padding: 10px 12px;
+  border-radius: 8px; border: 1px solid var(--line); background: var(--glass-hi);
+}
+.note { margin: 0; padding-top: 12px; border-top: 1px dashed var(--line); font-size: 12.5px; color: var(--mute); line-height: 1.45; }
+.note b { color: var(--fg); font-weight: 600; }
+.nav { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.nav button {
+  display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 9px 12px; border-radius: 10px;
+  border: 1px solid var(--line); background: rgba(255, 255, 255, 0.04); text-align: left;
+}
+.nav button:last-child { text-align: right; align-items: flex-end; }
+.nav button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); }
+.nav button:disabled { opacity: 0.35; cursor: default; }
+.nav small { font: 500 10px/1.2 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--mute); }
+.nav span { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+
+.hint {
+  position: fixed; z-index: 10; left: var(--gutter-l); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  font: 400 12px/1.3 var(--font-mono); color: var(--fg); padding: 7px 12px; border-radius: 8px;
+}
+.hint kbd { font: inherit; padding: 1px 5px; border: 1px solid var(--line); border-radius: 4px; }
+body.no-gl .lift-msg::after { content: " · 3D view unavailable here"; }
+
+/* ---------- outside: floor tags; inside: the "read more" spot ---------- */
+#tags, #spots { position: fixed; inset: 0; z-index: 12; pointer-events: none; overflow: hidden; }
+body:not(.outside) #tags, body.outside #spots, body.riding #spots, body.veiled #tags { display: none; }
+.tag {
+  position: absolute; left: 0; top: 0; pointer-events: auto; display: inline-flex; align-items: center; gap: 7px;
+  padding: 4px 10px 4px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--glass);
+  color: var(--fg); font: 500 11.5px/1.2 var(--font-body); white-space: nowrap;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); transition: background-color 0.15s;
+}
+.tag i { font: 600 10.5px/1 var(--font-mono); font-style: normal; color: var(--brass); }
+.tag::after { content: ""; position: absolute; top: 50%; width: 14px; height: 1px; background: var(--brass); opacity: 0.8; }
+.tag.l::after { right: -14px; }
+.tag.r::after { left: -14px; }
+.tag:hover, .tag[aria-current="true"] { background: var(--brass); color: var(--brass-ink); border-color: transparent; z-index: 1; }
+.tag:hover i, .tag[aria-current="true"] i { color: var(--brass-ink); }
+.tag.gate { background: var(--brass); color: var(--brass-ink); font-weight: 600; font-size: 13.5px; padding: 8px 16px; border: 0; animation: pulse 2s ease-in-out infinite; }
+.tag.gate::after { left: 50%; top: 100%; width: 1px; height: 18px; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 9px rgba(227, 185, 108, 0.2); } }
+.spot {
+  position: absolute; left: 0; top: 0; pointer-events: auto; display: inline-flex; align-items: center; gap: 8px;
+  padding: 7px 14px 7px 8px; border-radius: 999px; border: 0; background: var(--brass); color: var(--brass-ink);
+  font: 600 13px/1.2 var(--font-body); white-space: nowrap; box-shadow: 0 6px 22px rgba(0, 0, 0, 0.35);
+}
+.spot b {
+  width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: var(--brass-ink); color: var(--brass);
+  font: 700 12px/1 var(--font-mono); animation: pulse 2s ease-in-out infinite;
+}
+
+/* ---------- veil between outside and inside ---------- */
+.veil {
+  position: fixed; inset: 0; z-index: 40; background: #07090c; opacity: 1; pointer-events: auto; display: grid; place-items: center;
+  font: 500 12px/1 var(--font-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--mute); transition: opacity 0.5s ease;
+}
+body:not(.veiled) .veil { opacity: 0; pointer-events: none; }
+body.outside .lift, body.outside .readout .alt { display: none; }
+
+/* ---------- details sheet ---------- */
+.modal {
+  position: fixed; inset: 0; z-index: 45; display: grid; place-items: center; background: rgba(4, 7, 12, 0.55);
+  padding: calc(20px + env(safe-area-inset-top, 0px)) var(--gutter-r) calc(20px + env(safe-area-inset-bottom, 0px)) var(--gutter-l);
+}
+.sheet { width: min(640px, 100%); max-height: 100%; overflow-y: auto; border-radius: 18px; outline: none; overscroll-behavior: contain; }
+.sheet-inner { padding: 26px 28px 24px; display: flex; flex-direction: column; gap: 16px; }
+.sheet .close {
+  align-self: flex-end; margin: -8px -10px -40px 0; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.06); font: 500 12px/1.2 var(--font-mono); color: var(--mute);
+}
+.sheet .close:hover { color: var(--fg); }
+.sheet h2 { margin: 0; font: 800 46px/0.98 var(--font-display); text-transform: uppercase; text-wrap: balance; padding-right: 70px; }
+.sheet h3 { margin: 4px 0 0; font: 500 11px/1.2 var(--font-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--brass); }
+.details { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.details li { position: relative; padding-left: 22px; line-height: 1.55; max-width: 62ch; }
+.details li::before { content: ""; position: absolute; left: 3px; top: 0.62em; width: 7px; height: 7px; background: var(--brass); transform: rotate(45deg); }
+.hintline { margin: 0; font-size: 13.5px; color: var(--mute); }
+.hintline b { color: var(--brass); font-weight: 600; }
+.exit-btn { background: rgba(255, 255, 255, 0.06); }
+
+/* ---------- phones ---------- */
+@media (max-width: 820px) {
+  .brand span { display: none; }
+  .brand b { font-size: 18px; }
+  .pill { padding: 9px 13px; font-size: 13px; }
+  .lift-head { top: auto; bottom: calc(52% + 16px); font-size: 24px; }
+  .elevator { top: calc(68px + env(safe-area-inset-top, 0px)); bottom: auto; width: auto; }
+  .readout { padding: 8px 12px; display: grid; grid-template-columns: auto auto; column-gap: 10px; align-items: end; }
+  .readout .lbl { grid-column: 1 / -1; }
+  .readout .num { font-size: 38px; margin-top: 4px; }
+  .readout .alt { margin: 0 0 4px; }
+  .rail, .hint { display: none; }
+  .card {
+    top: auto; left: var(--gutter-l); right: var(--gutter-r); width: auto;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px)); max-height: 48%;
+  }
+  .card-inner { padding: 18px 18px 14px; gap: 12px; }
+  .card h2 { font-size: 32px; }
+  .tag { font-size: 10.5px; padding: 3px 8px 3px 6px; }
+  .tag span { display: none; }
+  .sheet h2 { font-size: 36px; }
+  .sheet-inner { padding: 22px 20px; }
+  #modeBtn span { display: none; }
+  .stats dd { font-size: 20px; }
+}
+@media (max-height: 640px) and (min-width: 821px) { .readout .num { font-size: 44px; } }
+@media (prefers-reduced-motion: reduce) {
+  .door { transition-duration: 0.01s; }
+  .lift.moving .door, .lift.moving .lift-head .arrow { animation: none; }
+  .progress.run b { animation: none; width: 0; }
+}
+</style>
+
+<div id="scene" aria-hidden="true"></div>
+<div id="tags"></div>
+<div id="spots"></div>
+<div class="veil" id="veil">Building the tower…</div>
+
+<div class="lift moving" id="lift" data-state="closed" aria-hidden="true">
+  <div class="door l"></div><div class="door r"></div>
+  <div class="lift-head"><span class="arrow">▲</span><b id="liftNum">G</b></div>
+  <div class="lift-msg" id="liftMsg">Doors opening shortly</div>
+</div>
+
+<header class="top">
+  <a class="brand glass" href="#lobby" id="brand"><b>Gaurav Agarwal</b><span>828 m · 19 floors</span></a>
+  <div class="top-right">
+    <button class="pill glass" id="modeBtn" type="button"></button>
+    <button class="pill glass sound-btn" id="soundBtn" type="button" aria-pressed="false" aria-label="Lift chime"></button>
+    <button class="pill tour-btn" id="tourBtn" type="button" aria-pressed="false"></button>
+  </div>
+</header>
+
+<nav class="elevator" aria-label="Floors">
+  <div class="readout glass">
+    <div class="lbl" id="roLbl">Floor</div>
+    <div class="num" id="roNum">G</div>
+    <div class="alt" id="roAlt">0 m above ground</div>
+  </div>
+  <div class="rail glass" id="rail"></div>
+</nav>
+
+<article class="card glass" id="card" tabindex="-1" aria-live="polite">
+  <div class="progress" id="progress"><b></b></div>
+  <div class="card-inner" id="cardInner"></div>
+</article>
+
+<div class="hint glass" id="hint"></div>
+
+<div class="modal" id="detail" hidden>
+  <article class="sheet glass" id="sheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="sheetTitle"></article>
+</div>
+
+<script>
+// All site copy lives in FLOORS. Floors run ground to top; m is height above ground in metres.
+const EMAIL = "gauravag0808@gmail.com";
+const LINKEDIN = "https://www.linkedin.com/in/gaurav-agarwal-ga0202/";
+const GITHUB = "https://github.com/Bittu25";
+
+const ZONES = {
+  lobby: { name: "Lobby", note: "<b>The ground floor.</b> Everyone comes in here." },
+  foundations: { name: "Foundations", note: "<b>Foundations</b> are the part of a tower you never see. They carry everything above." },
+  career: { name: "Career wing", note: "<b>Career wing:</b> one floor per role, oldest at the bottom." },
+  projects: { name: "Projects wing", note: "<b>Projects wing:</b> one floor for each thing I've built, planned or launched." },
+  mechanical: { name: "Mechanical", note: "<b>Mechanical floors</b> hold the pumps and wiring that keep a tower running. This one holds how I work." },
+  offices: { name: "Offices", note: "<b>Office floors</b> are the space a tower rents out. These are the services I take on." },
+  top: { name: "Summit", note: "" },
+};
+
+const FLOORS = [
+  {
+    id: "lobby", zone: "lobby", level: "G", m: 0,
+    title: "Gaurav Agarwal", sub: "Product Manager · Founder's office · Builder",
+    stats: [
+      { v: "₹50L+", l: "Revenue as cofounder" },
+      { v: "#1", l: "On Google after my SEO work" },
+      { v: "5", l: "Roles so far" },
+      { v: "8", l: "Projects in the tower" },
+    ],
+    body: "I take products from zero to shipped, strategy included. Product Manager at alokbansal.com and a BITS Pilani graduate. This tower is my portfolio: every floor is a chapter, from the foundations to the spire.",
+    lobby: true,
+  },
+  {
+    id: "bits", zone: "foundations", level: "1", m: 30,
+    title: "BITS Pilani", sub: "M.Sc. Mathematics + B.E. Mechanical · 2021 – 2026",
+    stats: [
+      { v: "Dual", l: "Degree" },
+      { v: "Finance", l: "Risk, valuation" },
+      { v: "Maths", l: "Game theory, graphs" },
+      { v: "Thesis", l: "Simulation-based optimisation" },
+    ],
+    body: "Coursework in financial risk and management, business analysis and valuation, game theory, cryptography, and graphs and networks. Mathematics taught me to model a problem; mechanical engineering taught me to build the thing.",
+  },
+  {
+    id: "kec", zone: "career", level: "2", m: 75,
+    title: "KEC International", sub: "Finance Analyst Intern · Jaipur · May – Jul 2023",
+    stats: [{ v: "18%", l: "Better portfolio recs" }, { v: "15+", l: "Stocks analysed" }],
+    body: "Technical and fundamental analysis across infrastructure and power stocks, and the Excel valuation models behind portfolio recommendations.",
+  },
+  {
+    id: "sigma", zone: "career", level: "3", m: 120,
+    title: "SIGMA", sub: "Co-founder · Aug 2023 – May 2025",
+    stats: [
+      { v: "₹50L+", l: "Revenue" },
+      { v: "3,000+", l: "Students served" },
+      { v: "18", l: "Months to get there" },
+      { v: "End to end", l: "Product + supply chain" },
+    ],
+    body: "Cofounded a merchandising platform for students, colleges, clubs and companies. Digitised a messy offline ordering process, built real-time order tracking, and ran the supply chain and team behind it.",
+  },
+  {
+    id: "apac", zone: "career", level: "4", m: 165,
+    title: "APAC Insurance", sub: "Founder's Office Intern · Remote · Sep – Nov 2024",
+    stats: [{ v: "+15%", l: "Customer acquisition" }, { v: "−20%", l: "Project turnaround" }],
+    body: "Market research and segmentation that lifted customer acquisition, plus workflow fixes that cut turnaround time.",
+  },
+  {
+    id: "epik", zone: "career", level: "5", m: 210,
+    title: "EPIK", sub: "Product Intern · Bangalore · Jan – Jul 2026",
+    stats: [
+      { v: "−25%", l: "Workflow delays" },
+      { v: "95%", l: "On-time delivery" },
+      { v: "20–30%", l: "Efficiency from automation", wide: true },
+    ],
+    body: "Wrote user stories, led root cause analysis and owned delivery across engineering, design and ops.",
+  },
+  {
+    id: "alokbansal", zone: "career", level: "6", m: 255,
+    title: "alokbansal.com", sub: "Product Manager · 2026 – now",
+    stats: [{ v: "2×", l: "Inquiries" }, { v: "#1", l: "Google ranking" }, { v: "−90%", l: "Server load time", wide: true }],
+    body: "Leading a new study abroad marketplace from zero, plus technical SEO and site performance. The highest floor of the career wing, because it's where I work today.",
+  },
+  {
+    id: "marketplace", zone: "projects", level: "7", m: 285,
+    title: "Study abroad marketplace", sub: "Product · alokbansal.com · 2026",
+    stats: [
+      { v: "2×", l: "Inquiry submissions" },
+      { v: "#1", l: "On Google search" },
+      { v: "90%", l: "Faster page loads" },
+      { v: "12+", l: "Catalogue categories" },
+    ],
+    body: "Product strategy, the catalogue, partner onboarding and the acquisition funnel, built from zero. Rewrote the user stories and redesigned the landing flow, which doubled inquiry form submissions.",
+  },
+  {
+    id: "nivesh", zone: "projects", level: "8", m: 308,
+    title: "Nivesh AI", sub: "Full stack investing app · 2026",
+    stats: [
+      { v: "17.8×", l: "LTV : CAC" },
+      { v: "Claude", l: "Hinglish AI advisor" },
+      { v: "PWA", l: "Plus APK" },
+      { v: "XIRR", l: "Portfolio analytics" },
+    ],
+    body: "Designed and built on my own: personalised SIP onboarding, live portfolio tracking, XIRR analytics and a conversational Hinglish advisor powered by Claude. Supabase backend, monetised with trail commission plus a Pro plan.",
+  },
+  {
+    id: "einvoice", zone: "projects", level: "9", m: 330,
+    title: "E-invoicing go-to-market", sub: "Founder's office case for a fintech · 2026",
+    stats: [
+      { v: "2", l: "Launch markets" },
+      { v: "7", l: "Partners shortlisted" },
+      { v: "5", l: "Mandates compared" },
+      { v: "1", l: "Product: invoice → pay" },
+    ],
+    body: "Which markets a spend-management fintech should enter first, what to build in-house versus partner for, and a shortlist of network, payments and financing partners, with pricing benchmarks where none were public.",
+  },
+  {
+    id: "tradepips", zone: "projects", level: "10", m: 353,
+    title: "TradePips", sub: "tradepips.co · 2026",
+    stats: [
+      { v: "Daily", l: "New guide" },
+      { v: "13", l: "Guides published" },
+      { v: "India", l: "Written for IST traders" },
+      { v: "Auto", l: "Publishing pipeline" },
+    ],
+    body: "A plain-English trading education site: pips, lot sizes, stop losses, market structure. A daily task writes the next guide from a topic list and publishes it.",
+    links: [{ label: "Visit tradepips.co", href: "https://tradepips.co" }],
+  },
+  {
+    id: "hackerclub", zone: "projects", level: "11", m: 375,
+    title: "Hacker Club", sub: "Coding contests and hackathons · 2026",
+    stats: [
+      { v: "10", l: "Pages" },
+      { v: "In-browser", l: "Editor + judge" },
+      { v: "Global", l: "Leaderboard" },
+      { v: "⌘K", l: "Command palette" },
+    ],
+    body: "An arena for coding competitions and online hackathons: compete from anywhere, get judged instantly, climb the leaderboard.",
+    links: [{ label: "Open Hacker Club", href: "https://bittu25.github.io/hacker-club/" }],
+  },
+  {
+    id: "dataworld", zone: "projects", level: "12", m: 398,
+    title: "Data World 3D", sub: "3D dashboards · 2026",
+    stats: [
+      { v: "2", l: "Worlds built" },
+      { v: "Store", l: "Inventory + lost sales" },
+      { v: "Hospital", l: "Admissions" },
+      { v: "Click", l: "Any object for its numbers" },
+    ],
+    body: "Turns retail and hospital datasets into explorable 3D worlds where every shelf, bed and van is a real data point. This tower is built with the same tools.",
+  },
+  {
+    id: "snapvanish", zone: "projects", level: "13", m: 420,
+    title: "Snap Vanish", sub: "Chrome extension · 2026",
+    stats: [
+      { v: "3", l: "Meet, Teams, Zoom" },
+      { v: "Snap", l: "Hand gesture trigger" },
+      { v: "Auto", l: "Mic mute" },
+      { v: "~10s", l: "Learns your room" },
+    ],
+    body: "Snap your fingers on a video call and you crumble into dust while your mic mutes. Snap again and you re-form.",
+  },
+  {
+    id: "process", zone: "mechanical", level: "14", m: 443,
+    title: "How I work", sub: "Four steps, every project",
+    list: [
+      { k: "01", t: "Understand", d: "Talk to users and stakeholders, read the numbers, and name the real problem." },
+      { k: "02", t: "Decide", d: "Narrow down to the few bets worth making, with a metric for each." },
+      { k: "03", t: "Ship", d: "Prototype fast, test with real people, then build what holds up." },
+      { k: "04", t: "Measure", d: "Watch the numbers, write up what we learned, and plan the next iteration." },
+    ],
+  },
+  {
+    id: "services", zone: "offices", level: "15", m: 458,
+    title: "What I offer", sub: "Freelance product, strategy and build work",
+    list: [
+      { k: "PM", t: "Product strategy", d: "User stories, roadmaps and prioritisation a team can execute, with a clear metric for every bet." },
+      { k: "FO", t: "Founder's office", d: "Market research, go-to-market plans, partner research and investor-ready documents." },
+      { k: "MVP", t: "MVPs and prototypes", d: "Working web apps, PWAs and Chrome extensions in days, built with AI-assisted tooling." },
+      { k: "SEO", t: "Growth and SEO", d: "Technical SEO, page speed and conversion work, the kind that took a site to #1 and doubled inquiries." },
+    ],
+  },
+  {
+    id: "atthetop", zone: "top", level: "16", m: 465,
+    title: "At the Top", sub: "The view from the observation deck",
+    note: "<b>The observation deck</b> is where you see how far everything below reaches.",
+    stats: [
+      { v: "₹50L+", l: "Revenue in 18 months as SIGMA cofounder", wide: true },
+      { v: "#1", l: "On Google after technical SEO" },
+      { v: "2×", l: "Inquiries from a new landing flow" },
+    ],
+    chips: ["Product strategy", "User stories", "Roadmaps", "Go-to-market", "SQL", "Python", "Figma", "Power BI", "Financial modelling", "Technical SEO", "Claude", "Supabase", "Bloomberg certified"],
+  },
+  {
+    id: "contact", zone: "top", level: "17", m: 555,
+    title: "Say hello", sub: "Available for freelance work · India, open to remote",
+    note: "<b>Floor 17</b>, the sky lounge, is the highest place you can stand. A good place to start a conversation.",
+    body: "Have a problem worth solving? Send me a note with what you're building and where it's stuck.",
+    email: true,
+    links: [{ label: "LinkedIn", href: LINKEDIN }, { label: "GitHub", href: GITHUB }],
+  },
+  {
+    id: "spire", zone: "top", level: "Tip", m: 828,
+    title: "Still climbing", sub: "The spire · 828 m",
+    note: "<b>The spire</b> is the part still reaching up.",
+    body: "Every tower gets taller during construction. Next up: more products from zero, and more teams to build them with. If that sounds like yours, the lift goes back down to Floor 17.",
+    links: [{ label: "Explore the 3D town portfolio", href: "https://bittu25.github.io/portfolio/" }],
+    spire: true,
+  },
+];
+
+// What I did on each floor, shown when a board is clicked.
+const DETAILS = {
+  lobby: ["I lead a study abroad marketplace from zero as Product Manager at alokbansal.com.", "I cofounded SIGMA, which reached ₹50L+ in revenue in 18 months.", "I've worked in two founder's offices and build my own products with AI tools.", "I studied at BITS Pilani: M.Sc. Mathematics and B.E. Mechanical."],
+  bits: ["Dual degree: M.Sc. Mathematics and B.E. Mechanical, 2021 – 2026.", "Coursework in financial risk and management, business analysis and valuation.", "Game theory, cryptography, and graphs and networks.", "Thesis on simulation-based optimisation."],
+  kec: ["Technical and fundamental analysis across infrastructure and power stocks.", "Analysed 15+ stocks for the portfolio team.", "Built the Excel valuation models behind portfolio recommendations.", "Those models improved portfolio recommendations by 18%."],
+  sigma: ["Cofounded a merchandising platform for students, colleges, clubs and companies.", "Digitised a messy offline ordering process.", "Built real-time order tracking so every customer could see their order move.", "Ran the supply chain and the team behind it.", "Served 3,000+ students and reached ₹50L+ in revenue in 18 months."],
+  apac: ["Founder's office intern, remote, Sep – Nov 2024.", "Ran market research and customer segmentation for the founder.", "The segmentation work lifted customer acquisition by 15%.", "Workflow fixes cut project turnaround time by 20%."],
+  epik: ["Product intern in Bangalore, Jan – Jul 2026.", "Wrote user stories for engineering, design and ops.", "Led the root cause analysis that cut workflow delays by 25%.", "Owned delivery at 95% on time; automation added 20–30% efficiency."],
+  alokbansal: ["Product Manager since 2026.", "Leading a new study abroad marketplace from zero.", "Redesigned the landing flow, which doubled inquiry submissions.", "Technical SEO took the site to #1 on Google, and server load time fell by 90%."],
+  marketplace: ["Product strategy for a new marketplace, built from zero.", "A catalogue of 12+ categories, from universities to visas and loans.", "Partner onboarding and the acquisition funnel.", "Rewrote the user stories and redesigned the landing flow: 2× inquiry submissions."],
+  nivesh: ["Designed and built on my own.", "Personalised SIP onboarding, live portfolio tracking and XIRR analytics.", "A conversational Hinglish advisor powered by Claude.", "Supabase backend, deployed on Railway, shipped as a PWA plus APK.", "Trail commission plus a Pro plan, with a 17.8× LTV:CAC model."],
+  einvoice: ["A founder's office case for a spend-management fintech.", "Compared 5 e-invoicing mandates and picked 2 launch markets.", "Decided what to build in-house and what to partner for.", "Shortlisted 7 network, payments and financing partners, with pricing benchmarks where none were public."],
+  tradepips: ["A plain-English trading education site for Indian traders.", "Covers pips, lot sizes, stop losses and market structure.", "A daily task writes the next guide from a topic list and publishes it: 13 guides so far."],
+  hackerclub: ["An arena for coding competitions and online hackathons.", "In-browser code editor with an instant judge.", "A global leaderboard and a ⌘K command palette across 10 pages."],
+  dataworld: ["Turns any dataset into an explorable 3D world.", "Two worlds so far: a retail store (inventory and lost sales) and a hospital (admissions).", "Every shelf, bed and van is a real data point you can click."],
+  snapvanish: ["A Chrome extension for Meet, Teams and Zoom.", "Snap your fingers and you crumble into dust on camera while your mic mutes.", "Snap again and you re-form. It learns your room in about 10 seconds."],
+};
+
+// ---- state ----
+const STEP_MS = 9000;
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const emit = (name, detail) => dispatchEvent(new CustomEvent(name, { detail }));
+const fromHash = FLOORS.findIndex((f) => f.id === location.hash.slice(1));
+let mode = "outside"; // outside the tower or inside it
+let idx = fromHash < 0 ? 0 : fromHash; // floor the lift is at, or the floor picked outside
+let target = idx; // floor the lift is heading to
+let focused = fromHash < 0 ? null : fromHash; // floor highlighted from outside (null = whole tower)
+let riding = false;
+let busy = false;
+let touring = false;
+let tourTimer = 0;
+let shownMetres = FLOORS[idx].m;
+let soundOn = false;
+let audio = null;
+
+window.TOWER_FLOORS = FLOORS.map((f) => ({ id: f.id, m: f.m, level: f.level, title: f.title, zone: ZONES[f.zone].name }));
+window.TOWER_FOCUS = focused;
+document.body.classList.add("outside", "veiled", "riding");
+
+// Roughly the speed of a fast lift, shortened so the ride never drags.
+const rideMs = (a, b) => (reduceMotion ? 300 : Math.min(5000, 700 + Math.abs(a - b) * 900));
+const levelLabel = (f) => (f.level === "G" ? "Ground floor" : f.level === "Tip" ? "Spire" : "Floor " + f.level);
+const shortLevel = (f) => (f.level === "G" ? "G" : f.level === "Tip" ? "828" : f.level);
+const badge = (f) => (f.level === "G" ? "G" : f.level === "Tip" ? "Spire" : "Floor " + f.level);
+
+// ---- rail ----
+function buildRail() {
+  const rail = $("rail");
+  const groups = [];
+  FLOORS.forEach((f, i) => {
+    const last = groups[groups.length - 1];
+    if (!last || last.zone !== f.zone) groups.push({ zone: f.zone, items: [] });
+    groups[groups.length - 1].items.push(i);
+  });
+  rail.innerHTML = groups
+    .map(
+      (g) =>
+        `<div class="zone">${g.items
+          .map((i) => {
+            const f = FLOORS[i];
+            return `<button class="stop" type="button" data-i="${i}" aria-label="${esc(levelLabel(f) + ", " + f.title)}"><i>${esc(f.level)}</i><span>${esc(f.title)}</span></button>`;
+          })
+          .join("")}<h3>${esc(ZONES[g.zone].name)}</h3></div>`
+    )
+    .join("");
+  rail.addEventListener("click", (e) => {
+    const b = e.target.closest(".stop");
+    if (b) go(+b.dataset.i);
+  });
+}
+function markRail(i) {
+  document.querySelectorAll(".stop").forEach((b) => b.setAttribute("aria-current", String(+b.dataset.i === i)));
+  if (i != null) document.querySelector(`.stop[data-i="${i}"]`)?.scrollIntoView({ block: "nearest" });
+}
+
+// ---- floor content, shared by the card and the details sheet ----
+function statsHtml(f) {
+  if (!f.stats) return "";
+  // an odd tile out spans both columns so the grid never leaves a hole
+  const halves = f.stats.filter((s) => !s.wide);
+  const lone = halves.length % 2 ? halves[halves.length - 1] : null;
+  return `<dl class="stats">${f.stats.map((s) => `<div class="${s.wide || s === lone ? "wide" : ""}"><dt>${esc(s.l)}</dt><dd>${esc(s.v)}</dd></div>`).join("")}</dl>`;
+}
+function linksHtml(f, primary) {
+  const a = (f.links || []).map((l, k) => `<a class="btn${primary && k === 0 ? " primary" : ""}" href="${esc(l.href)}" target="_blank" rel="noreferrer">${esc(l.label)} ↗</a>`);
+  return a.length ? `<div class="actions">${a.join("")}</div>` : "";
+}
+function headHtml(f, minBtn) {
+  return `<div class="head"><div class="head-row"><p class="eyebrow"><span class="lvl">${esc(badge(f))}</span>${esc(ZONES[f.zone].name)} · ${f.m} m</p>${minBtn ? `<button class="min-btn" type="button" data-act="min" aria-expanded="true">Hide</button>` : ""}</div><h2>${esc(f.title)}</h2>${f.sub ? `<p class="sub">${esc(f.sub)}</p>` : ""}</div>`;
+}
+function navHtml(i) {
+  const prev = FLOORS[i - 1], next = FLOORS[i + 1];
+  return `<div class="nav">
+      <button type="button" data-act="down" ${prev ? "" : "disabled"}><small>↓ Down</small><span>${prev ? esc(prev.title) : "Ground floor"}</span></button>
+      <button type="button" data-act="up" ${next ? "" : "disabled"}><small>Up ↑</small><span>${next ? esc(next.title) : "Top of the tower"}</span></button>
+    </div>`;
+}
+const boardName = (f) => (f.id === "lobby" ? "name wall" : f.id === "bits" ? "chalkboard" : f.id === "epik" ? "kanban board" : f.id === "alokbansal" ? "departures board" : f.zone === "projects" ? "big screen" : f.id === "process" ? "machines" : f.id === "services" ? "suite signs" : f.id === "atthetop" ? "lightboxes" : f.id === "contact" ? "contact card" : f.id === "spire" ? "spire plate" : "board");
+
+// The card inside: where you are, and a pointer to the board on the wall.
+function renderCard(i) {
+  const f = FLOORS[i];
+  const z = ZONES[f.zone];
+  const parts = [headHtml(f, true)];
+  parts.push(`<p class="hintline">Click the <b>${esc(boardName(f))}</b> in the room, or the button below, to read what I did here.</p>`);
+  const acts = [`<button class="btn primary" type="button" data-act="detail">Read what I did here</button>`];
+  if (f.lobby) acts.push(`<button class="btn" type="button" data-act="tour">Start the tour</button>`);
+  if (f.email) acts.push(`<button class="btn" type="button" data-act="detail">Get my email</button>`);
+  acts.push(`<button class="btn" type="button" data-act="exit">Exit the tower</button>`);
+  parts.push(`<div class="actions">${acts.join("")}</div>`);
+  const note = f.note ?? z.note;
+  if (note) parts.push(`<p class="note">${note}</p>`);
+  parts.push(navHtml(i));
+  $("cardInner").innerHTML = parts.join("");
+  $("card").classList.remove("min");
+  $("card").scrollTop = 0;
+  emit("tower:label", { text: f.id === "lobby" ? "Read about me" : f.id === "contact" ? "Get in touch" : "Read what I did at " + f.title });
+}
+
+// The card outside: the whole tower, or the floor you picked.
+function renderOutsideCard() {
+  const parts = [];
+  if (focused == null) {
+    parts.push(`<div class="head"><div class="head-row"><p class="eyebrow"><span class="lvl">828 m</span>19 floors · one per chapter</p><button class="min-btn" type="button" data-act="min" aria-expanded="true">Hide</button></div><h2>Gaurav Agarwal Tower</h2><p class="sub">Product Manager · Founder's office · Builder</p></div>`);
+    parts.push(`<p class="body">Every lit band on the tower is a floor of my work, from my degree at the foundations to the spire. Click the entrance at the base to walk in, or click any floor to look at it from outside.</p>`);
+    parts.push(`<div class="actions"><button class="btn primary" type="button" data-act="enter">Enter the lobby</button><button class="btn" type="button" data-act="tour">Take the guided tour</button></div>`);
+    parts.push(`<p class="note"><b>Drag</b> to walk round the tower, <b>scroll</b> to zoom, <b>drag up or down</b> to look along its height.</p>`);
+  } else {
+    const f = FLOORS[focused];
+    parts.push(headHtml(f, true));
+    const short = f.body || (f.list ? f.list.map((x) => x.t).join(" · ") : "");
+    if (short) parts.push(`<p class="body">${esc(short)}</p>`);
+    parts.push(
+      `<div class="actions"><button class="btn primary" type="button" data-act="enter">${focused === 0 ? "Enter the lobby" : "Take the lift to " + esc(levelLabel(f))}</button><button class="btn" type="button" data-act="overview">See the whole tower</button></div>`
+    );
+    parts.push(navHtml(focused));
+  }
+  $("cardInner").innerHTML = parts.join("");
+  $("card").classList.remove("min");
+  $("card").scrollTop = 0;
+}
+
+// The details sheet: everything about one floor.
+let lastFocus = null;
+function openDetail(i) {
+  const f = FLOORS[i];
+  const parts = [`<button class="close" type="button" data-act="close">Close ✕</button>`];
+  parts.push(`<p class="eyebrow"><span class="lvl">${esc(badge(f))}</span>${esc(ZONES[f.zone].name)} · ${f.m} m</p>`);
+  parts.push(`<h2 id="sheetTitle">${esc(f.title)}</h2>`);
+  if (f.sub) parts.push(`<p class="sub">${esc(f.sub)}</p>`);
+  parts.push(statsHtml(f));
+  if (f.body) parts.push(`<p class="body">${esc(f.body)}</p>`);
+  const d = DETAILS[f.id];
+  if (d) parts.push(`<h3>What I did</h3><ul class="details">${d.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`);
+  if (f.list) parts.push(`<ol class="list">${f.list.map((x) => `<li><em>${esc(x.k)}</em><b>${esc(x.t)}</b><span>${esc(x.d)}</span></li>`).join("")}</ol>`);
+  if (f.chips) parts.push(`<h3>Skills</h3><div class="chips">${f.chips.map((c) => `<span>${esc(c)}</span>`).join("")}</div>`);
+  if (f.email || f.lobby) parts.push(`<div class="email"><code id="emailText">${esc(EMAIL)}</code><button class="btn primary" type="button" id="copyBtn">Copy email</button></div>`);
+  if (f.lobby) parts.push(`<div class="actions"><a class="btn" href="${LINKEDIN}" target="_blank" rel="noreferrer">LinkedIn ↗</a><a class="btn" href="${GITHUB}" target="_blank" rel="noreferrer">GitHub ↗</a></div>`);
+  parts.push(linksHtml(f, !f.email));
+  $("sheet").innerHTML = `<div class="sheet-inner">${parts.join("")}</div>`;
+  lastFocus = document.activeElement;
+  $("detail").hidden = false;
+  $("sheet").scrollTop = 0;
+  $("sheet").focus({ preventScroll: true });
+  if (touring) stopTour();
+}
+function closeDetail() {
+  if ($("detail").hidden) return;
+  $("detail").hidden = true;
+  lastFocus?.focus?.({ preventScroll: true });
+}
+$("detail").addEventListener("click", (e) => {
+  if (e.target === $("detail") || e.target.closest("[data-act='close']")) closeDetail();
+});
+
+// One handler for every button in the card and the sheet.
+async function onAction(e) {
+  const el = e.target.closest("[data-act]");
+  const act = el?.dataset.act;
+  if (act === "tour") startTour();
+  else if (act === "enter") enter(focused ?? 0);
+  else if (act === "exit") exitTower();
+  else if (act === "detail") openDetail(idx);
+  else if (act === "overview") pickOutside(null);
+  else if (act === "up") go((mode === "inside" ? target : focused ?? -1) + 1);
+  else if (act === "down") go((mode === "inside" ? target : focused ?? 1) - 1);
+  else if (act === "min") {
+    const min = $("card").classList.toggle("min");
+    el.textContent = min ? "Show" : "Hide";
+    el.setAttribute("aria-expanded", String(!min));
+  }
+  if (e.target.id === "copyBtn") {
+    const btn = e.target;
+    try {
+      await navigator.clipboard.writeText(EMAIL);
+      btn.textContent = "Copied";
+      setTimeout(() => (btn.textContent = "Copy email"), 1800);
+    } catch {
+      const r = document.createRange();
+      r.selectNodeContents($("emailText"));
+      getSelection().removeAllRanges();
+      getSelection().addRange(r);
+      btn.textContent = "Press ⌘C / Ctrl+C";
+    }
+  }
+}
+$("card").addEventListener("click", onAction);
+$("sheet").addEventListener("click", onAction);
+
+// ---- readouts: the panel and the indicator above the doors roll through the floors ----
+let rollRaf = 0;
+let shownIndex = idx;
+function setReadout(i, dur) {
+  const f = FLOORS[i];
+  $("roLbl").textContent = f.level === "G" ? "Ground" : f.level === "Tip" ? "Spire" : "Floor";
+  const fromM = shownMetres, fromI = shownIndex;
+  document.querySelector("#lift .arrow").textContent = i >= fromI ? "▲" : "▼";
+  const t0 = performance.now();
+  cancelAnimationFrame(rollRaf);
+  const tick = (now) => {
+    const t = dur ? Math.min(1, (now - t0) / dur) : 1;
+    const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    shownMetres = fromM + (f.m - fromM) * e;
+    shownIndex = fromI + (i - fromI) * e;
+    // the counter steps through each floor on the way, one at a time
+    const lvl = shortLevel(FLOORS[Math.round(shownIndex)]);
+    $("roNum").textContent = lvl;
+    $("liftNum").textContent = lvl;
+    $("roAlt").textContent = Math.round(shownMetres) + " m above ground";
+    if (t < 1) rollRaf = requestAnimationFrame(tick);
+    else shownIndex = i;
+  };
+  rollRaf = requestAnimationFrame(tick);
+}
+function paintOutsideReadout() {
+  const f = focused == null ? null : FLOORS[focused];
+  $("roLbl").textContent = f ? levelLabel(f) : "Outside";
+  $("roNum").textContent = f ? shortLevel(f) : "828";
+}
+
+// ---- chime (off until the visitor turns it on) ----
+function chime() {
+  if (!soundOn || !audio) return;
+  const t = audio.currentTime;
+  [[1318.5, 0], [1046.5, 0.32]].forEach(([hz, at]) => {
+    const o = audio.createOscillator();
+    const g = audio.createGain();
+    o.type = "sine";
+    o.frequency.value = hz;
+    g.gain.setValueAtTime(0, t + at);
+    g.gain.linearRampToValueAtTime(0.18, t + at + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + at + 1.4);
+    o.connect(g).connect(audio.destination);
+    o.start(t + at);
+    o.stop(t + at + 1.5);
+  });
+}
+const soundIcon = (on) =>
+  `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6h3l4-3v10L5 10H2z" fill="currentColor"/>${on ? '<path d="M11 5.5c1 .8 1 4.2 0 5M12.8 3.8c2 1.8 2 6.6 0 8.4" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/>' : '<path d="M11 6l4 4M15 6l-4 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>'}</svg>`;
+function paintSound() {
+  $("soundBtn").innerHTML = soundIcon(soundOn);
+  $("soundBtn").setAttribute("aria-pressed", String(soundOn));
+  $("soundBtn").title = soundOn ? "Lift chime on" : "Lift chime off";
+}
+$("soundBtn").addEventListener("click", () => {
+  soundOn = !soundOn;
+  if (soundOn && !audio) {
+    try {
+      audio = new (window.AudioContext || window.webkitAudioContext)();
+    } catch {
+      soundOn = false;
+    }
+  }
+  paintSound();
+  chime();
+});
+
+// ---- top bar: enter or leave, and the hint line ----
+const doorIcon = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2h7v12H3z" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M10 8h5M13 6l2 2-2 2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+function paintMode() {
+  $("modeBtn").innerHTML = mode === "inside" ? `${doorIcon}<span>Exit the tower</span>` : `${doorIcon}<span>Enter the lobby</span>`;
+  $("hint").innerHTML = mode === "inside" ? "Drag to look around · click the boards · scroll or <kbd>↑</kbd> <kbd>↓</kbd> to ride" : "Drag to walk round · scroll to zoom · click a floor or the entrance";
+}
+$("modeBtn").addEventListener("click", () => (mode === "inside" ? exitTower() : enter(focused ?? 0)));
+
+// ---- outside: pick floors, then walk in ----
+function pickOutside(i) {
+  focused = i;
+  markRail(i);
+  renderOutsideCard();
+  paintOutsideReadout();
+  emit(i == null ? "tower:overview" : "tower:focus", { index: i });
+  try {
+    history.replaceState(null, "", i == null ? location.pathname + location.search : "#" + FLOORS[i].id);
+  } catch {}
+}
+addEventListener("tower:pick", (e) => mode === "outside" && pickOutside(e.detail.index));
+addEventListener("tower:gate", () => mode === "outside" && enter(0));
+addEventListener("tower:board", (e) => openDetail(e.detail.index));
+
+async function enter(i) {
+  if (mode !== "outside" || busy) return;
+  busy = true;
+  closeDetail();
+  emit("tower:fly-in", { index: i });
+  await sleep(reduceMotion ? 0 : 1700);
+  document.body.classList.add("veiled", "riding");
+  $("veil").textContent = i === 0 ? "Walking into the lobby…" : "Calling the lift…";
+  await sleep(550);
+  mode = "inside";
+  document.body.classList.remove("outside");
+  lift.dataset.state = "closed";
+  lift.classList.remove("moving");
+  idx = target = i;
+  shownMetres = FLOORS[i].m;
+  shownIndex = i;
+  setReadout(i, 0);
+  markRail(i);
+  renderCard(i);
+  paintMode();
+  paintTourBtn();
+  emit("tower:go", { index: i });
+  try {
+    history.replaceState(null, "", "#" + FLOORS[i].id);
+  } catch {}
+  await sleep(250);
+  document.body.classList.remove("veiled");
+  await sleep(450);
+  busy = false;
+  await arrive();
+  if (touring) scheduleTour();
+}
+
+async function exitTower() {
+  if (mode !== "inside" || busy || riding) return;
+  busy = true;
+  stopTour();
+  closeDetail();
+  document.body.classList.add("riding");
+  $("liftMsg").textContent = "Leaving the tower";
+  lift.dataset.state = "closed";
+  await sleep(reduceMotion ? 50 : 1000);
+  $("veil").textContent = "Stepping outside…";
+  document.body.classList.add("veiled");
+  await sleep(550);
+  mode = "outside";
+  document.body.classList.add("outside");
+  document.body.classList.remove("riding");
+  focused = idx;
+  emit("tower:outside", { index: idx });
+  markRail(idx);
+  renderOutsideCard();
+  paintOutsideReadout();
+  paintMode();
+  paintTourBtn();
+  await sleep(200);
+  document.body.classList.remove("veiled");
+  busy = false;
+}
+
+// ---- inside: the lift ----
+const lift = $("lift");
+function go(i, opts = {}) {
+  if (mode === "outside") {
+    if (i < 0 || i >= FLOORS.length) return;
+    return pickOutside(i);
+  }
+  if (busy) return;
+  i = Math.max(0, Math.min(FLOORS.length - 1, i));
+  if (i === target && !opts.force) return;
+  target = i;
+  if (!opts.fromTour && touring) stopTour();
+  closeDetail();
+  markRail(i);
+  try {
+    history.replaceState(null, "", "#" + FLOORS[i].id);
+  } catch {}
+  if (!riding) ride();
+}
+
+async function ride() {
+  riding = true;
+  clearTimeout(tourTimer);
+  $("progress").classList.remove("run");
+  document.body.classList.add("riding");
+  $("liftMsg").textContent = "Doors closing";
+  lift.dataset.state = "closed";
+  await sleep(reduceMotion ? 50 : 1000);
+  while (idx !== target) {
+    const from = idx;
+    const to = target;
+    const dur = rideMs(from, to);
+    idx = to;
+    $("liftMsg").textContent = (FLOORS[to].m >= FLOORS[from].m ? "Going up to " : "Going down to ") + FLOORS[to].title;
+    lift.classList.add("moving");
+    setReadout(to, dur);
+    emit("tower:go", { index: to });
+    await sleep(dur);
+  }
+  lift.classList.remove("moving");
+  renderCard(idx);
+  paintTourBtn();
+  await arrive();
+  riding = false;
+  if (target !== idx) return ride();
+  if (touring) scheduleTour();
+}
+
+async function arrive() {
+  $("liftMsg").textContent = levelLabel(FLOORS[idx]) + " · " + FLOORS[idx].title;
+  await sleep(reduceMotion ? 0 : 350);
+  chime();
+  lift.dataset.state = "open";
+  document.body.classList.remove("riding");
+  emit("tower:arrive", { index: idx });
+}
+
+// ---- guided tour: in through the lobby, then every floor in turn ----
+const playIcon = '<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5v11l9-5.5z" fill="currentColor"/></svg>';
+const pauseIcon = '<svg viewBox="0 0 14 14" aria-hidden="true"><rect x="2.5" y="1.5" width="3.2" height="11" fill="currentColor"/><rect x="8.3" y="1.5" width="3.2" height="11" fill="currentColor"/></svg>';
+function paintTourBtn() {
+  const b = $("tourBtn");
+  const label = mode === "outside" ? "Guided tour" : target === FLOORS.length - 1 ? "Tour again" : target === 0 ? "Start the tour" : "Resume tour";
+  b.innerHTML = touring ? `${pauseIcon} Pause tour` : `${playIcon} ${label}`;
+  b.setAttribute("aria-pressed", String(touring));
+}
+function scheduleTour() {
+  clearTimeout(tourTimer);
+  const bar = $("progress");
+  bar.classList.remove("run");
+  if (!touring || mode !== "inside") return;
+  if (idx >= FLOORS.length - 1) return stopTour();
+  void bar.offsetWidth; // restart the CSS animation
+  bar.style.setProperty("--step", STEP_MS / 1000 + "s");
+  bar.classList.add("run");
+  tourTimer = setTimeout(() => go(idx + 1, { fromTour: true }), STEP_MS);
+}
+function startTour() {
+  touring = true;
+  paintTourBtn();
+  if (mode === "outside") return enter(0);
+  if (riding) return;
+  if (target >= FLOORS.length - 1) go(0, { fromTour: true });
+  else scheduleTour();
+}
+function stopTour() {
+  touring = false;
+  clearTimeout(tourTimer);
+  $("progress").classList.remove("run");
+  paintTourBtn();
+}
+$("tourBtn").addEventListener("click", () => (touring ? stopTour() : startTour()));
+
+// ---- input: wheel and keys ride the lift inside; outside, the 3D scene zooms ----
+let wheelAcc = 0;
+let wheelLock = 0;
+addEventListener(
+  "wheel",
+  (e) => {
+    if (mode !== "inside" || !$("detail").hidden) return;
+    const card = $("card");
+    if (card.contains(e.target) && card.scrollHeight > card.clientHeight + 4) return;
+    if ($("rail").contains(e.target)) return;
+    e.preventDefault();
+    if (performance.now() < wheelLock) return;
+    wheelAcc += e.deltaY;
+    if (Math.abs(wheelAcc) > 60) {
+      go(target + (wheelAcc > 0 ? 1 : -1));
+      wheelAcc = 0;
+      wheelLock = performance.now() + 1100;
+    }
+  },
+  { passive: false }
+);
+addEventListener("keydown", (e) => {
+  if (e.key === "Escape") return closeDetail();
+  if (!$("detail").hidden) return;
+  if (e.target.closest && e.target.closest("input, textarea")) return;
+  const cur = mode === "inside" ? target : focused ?? -1;
+  if (["ArrowUp", "PageUp"].includes(e.key)) (e.preventDefault(), go(cur + 1));
+  else if (["ArrowDown", "PageDown"].includes(e.key)) (e.preventDefault(), go(Math.max(0, cur - 1)));
+  else if (e.key === "Enter" && mode === "outside" && document.activeElement === document.body) enter(focused ?? 0);
+});
+$("brand").addEventListener("click", (e) => {
+  e.preventDefault();
+  if (mode === "inside") exitTower();
+  else pickOutside(null);
+});
+
+// ---- boot: start outside, looking at the whole tower ----
+buildRail();
+markRail(focused);
+renderOutsideCard();
+paintOutsideReadout();
+paintTourBtn();
+paintSound();
+paintMode();
+let booted = false;
+function boot() {
+  if (booted) return;
+  booted = true;
+  document.body.classList.remove("veiled", "riding");
+  $("card").scrollTop = 0;
+}
+addEventListener("tower:ready", () => (document.body.classList.remove("no-gl"), boot()));
+// If the 3D scene never arrives (blocked CDN, no WebGL), the floors and cards still work.
+setTimeout(() => {
+  if (booted) return;
+  document.body.classList.add("no-gl");
+  boot();
+}, 25000);
+</script>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+
+// Every floor is a room built at its real height, so the windows look down on the city from there.
+const FLOORS = window.TOWER_FLOORS;
+const TOP = 828;
+const host = document.getElementById("scene");
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const FD = '"Big Shoulders Display", "Arial Narrow", sans-serif';
+const FB = '"Instrument Sans", "Helvetica Neue", Arial, sans-serif';
+const FM = '"IBM Plex Mono", Menlo, monospace';
+const FH = '"Caveat", "Segoe Print", cursive';
+
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+} catch (err) {
+  document.body.classList.add("no-gl");
+  throw err;
+}
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.6));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+host.appendChild(renderer.domElement);
+const ANISO = renderer.capabilities.getMaxAnisotropy();
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(62, 1, 0.05, 16000);
+camera.rotation.order = "YXZ";
+scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+scene.fog = new THREE.Fog(0xe8d7bb, 120, 4200);
+
+// ---------- small helpers ----------
+const rnd = (a = 1, b) => (b === undefined ? Math.random() * a : a + Math.random() * (b - a));
+const pick = (a) => a[(Math.random() * a.length) | 0];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const shared = (x) => ((x.userData.shared = true), x);
+function canvasOf(w, h, draw) {
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  draw(c.getContext("2d"), w, h);
+  return c;
+}
+function texOf(c, repeat = false) {
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = ANISO;
+  if (repeat) t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+const cvt = (w, h, draw, repeat) => texOf(canvasOf(w, h, draw), repeat);
+function rep(t, rx, ry) {
+  const c = t.clone();
+  c.userData = {};
+  c.repeat.set(rx, ry);
+  c.needsUpdate = true;
+  return c;
+}
+function speckle(g, w, h, n, color, max = 2) {
+  g.fillStyle = color;
+  for (let i = 0; i < n; i++) {
+    const s = 0.5 + Math.random() * max;
+    g.fillRect(Math.random() * w, Math.random() * h, s, s);
+  }
+}
+function txt(g, s, x, y, font, color, align = "left", base = "alphabetic") {
+  g.font = font;
+  g.fillStyle = color;
+  g.textAlign = align;
+  g.textBaseline = base;
+  g.fillText(s, x, y);
+}
+function rr(g, x, y, w, h, r, fill) {
+  g.beginPath();
+  g.roundRect(x, y, w, h, r);
+  if (fill) {
+    g.fillStyle = fill;
+    g.fill();
+  }
+}
+function wrapText(g, s, x, y, maxW, lh) {
+  const words = s.split(" ");
+  let line = "";
+  for (const w of words) {
+    const t = line ? line + " " + w : w;
+    if (g.measureText(t).width > maxW && line) {
+      g.fillText(line, x, y);
+      line = w;
+      y += lh;
+    } else line = t;
+  }
+  g.fillText(line, x, y);
+  return y;
+}
+
+// ---------- shared textures ----------
+const T = {};
+function initTextures() {
+  T.marble = shared(
+    cvt(1024, 1024, (g, w, h) => {
+      g.fillStyle = "#ebe6de";
+      g.fillRect(0, 0, w, h);
+      for (let i = 0; i < 40; i++) {
+        const x = rnd(w), y = rnd(h), r = rnd(80, 260);
+        const rg = g.createRadialGradient(x, y, 0, x, y, r);
+        rg.addColorStop(0, "rgba(212,202,188,0.35)");
+        rg.addColorStop(1, "rgba(212,202,188,0)");
+        g.fillStyle = rg;
+        g.fillRect(0, 0, w, h);
+      }
+      g.filter = "blur(1.2px)";
+      for (let i = 0; i < 22; i++) {
+        g.strokeStyle = `rgba(${rnd(95, 130) | 0},${rnd(92, 120) | 0},${rnd(90, 110) | 0},${rnd(0.12, 0.4)})`;
+        g.lineWidth = rnd(0.6, 2.8);
+        g.beginPath();
+        let x = rnd(w), y = rnd(h);
+        g.moveTo(x, y);
+        for (let k = 0; k < 7; k++) {
+          const nx = x + rnd(-90, 260), ny = y + rnd(-200, 200);
+          g.quadraticCurveTo(x + rnd(-120, 120), y + rnd(-120, 120), nx, ny);
+          x = nx;
+          y = ny;
+        }
+        g.stroke();
+      }
+      g.filter = "none";
+      speckle(g, w, h, 4000, "rgba(120,110,100,0.08)", 2);
+      g.strokeStyle = "rgba(80,72,64,0.35)";
+      g.lineWidth = 3;
+      g.strokeRect(0, 0, w, h);
+    }, true)
+  );
+  // plank floor: one tile is about 4 m
+  T.wood = shared(
+    cvt(1024, 1024, (g, w, h) => {
+      const rows = 8, rh = h / rows;
+      for (let r = 0; r < rows; r++) {
+        let x = -rnd(300);
+        while (x < w) {
+          const len = rnd(260, 520);
+          const l = rnd(30, 44);
+          g.fillStyle = `hsl(${rnd(24, 32)}, ${rnd(32, 44)}%, ${l}%)`;
+          g.fillRect(x, r * rh, len, rh);
+          g.strokeStyle = "rgba(40,22,10,0.10)";
+          for (let k = 0; k < 14; k++) {
+            g.lineWidth = rnd(0.5, 1.6);
+            g.beginPath();
+            const y = r * rh + rnd(rh);
+            g.moveTo(x, y);
+            g.bezierCurveTo(x + len * 0.3, y + rnd(-6, 6), x + len * 0.6, y + rnd(-6, 6), x + len, y + rnd(-4, 4));
+            g.stroke();
+          }
+          g.fillStyle = "rgba(20,10,4,0.55)";
+          g.fillRect(x, r * rh, 2, rh);
+          x += len;
+        }
+        g.fillStyle = "rgba(20,10,4,0.5)";
+        g.fillRect(0, r * rh, w, 2);
+      }
+    }, true)
+  );
+  T.grain = shared(
+    cvt(512, 512, (g, w, h) => {
+      g.fillStyle = "#8a5a36";
+      g.fillRect(0, 0, w, h);
+      g.strokeStyle = "rgba(50,25,10,0.18)";
+      for (let k = 0; k < 90; k++) {
+        g.lineWidth = rnd(0.5, 2);
+        g.beginPath();
+        const y = rnd(h);
+        g.moveTo(0, y);
+        g.bezierCurveTo(w * 0.3, y + rnd(-10, 10), w * 0.6, y + rnd(-10, 10), w, y + rnd(-6, 6));
+        g.stroke();
+      }
+    }, true)
+  );
+  T.carpet = shared(
+    cvt(512, 512, (g, w, h) => {
+      g.fillStyle = "#d8d8d8";
+      g.fillRect(0, 0, w, h);
+      speckle(g, w, h, 26000, "rgba(0,0,0,0.10)", 1.4);
+      speckle(g, w, h, 12000, "rgba(255,255,255,0.18)", 1.2);
+      g.strokeStyle = "rgba(0,0,0,0.12)";
+      g.lineWidth = 2;
+      g.strokeRect(0, 0, w, h);
+    }, true)
+  );
+  T.concrete = shared(
+    cvt(512, 512, (g, w, h) => {
+      g.fillStyle = "#a3a09b";
+      g.fillRect(0, 0, w, h);
+      for (let i = 0; i < 60; i++) {
+        const x = rnd(w), y = rnd(h), r = rnd(30, 140);
+        const rg = g.createRadialGradient(x, y, 0, x, y, r);
+        const c = Math.random() < 0.5 ? "255,255,255" : "40,38,35";
+        rg.addColorStop(0, `rgba(${c},0.07)`);
+        rg.addColorStop(1, `rgba(${c},0)`);
+        g.fillStyle = rg;
+        g.fillRect(0, 0, w, h);
+      }
+      speckle(g, w, h, 9000, "rgba(30,30,30,0.12)", 1.5);
+      g.strokeStyle = "rgba(40,40,40,0.25)";
+      g.lineWidth = 1.5;
+      g.strokeRect(0, 0, w, h);
+    }, true)
+  );
+  T.ceil = shared(
+    cvt(256, 256, (g, w, h) => {
+      g.fillStyle = "#f2f0eb";
+      g.fillRect(0, 0, w, h);
+      speckle(g, w, h, 2500, "rgba(0,0,0,0.05)", 1.2);
+      g.fillStyle = "#cfccc5";
+      g.fillRect(0, 0, w, 3);
+      g.fillRect(0, 0, 3, h);
+    }, true)
+  );
+  T.brushed = shared(
+    cvt(256, 256, (g, w, h) => {
+      g.fillStyle = "#b9c0c7";
+      g.fillRect(0, 0, w, h);
+      for (let y = 0; y < h; y++) {
+        g.fillStyle = `rgba(${Math.random() < 0.5 ? "255,255,255" : "0,0,0"},${rnd(0.02, 0.08)})`;
+        g.fillRect(0, y, w, 1);
+      }
+    }, true)
+  );
+  T.grating = shared(
+    cvt(256, 256, (g, w, h) => {
+      g.fillStyle = "#2a2d30";
+      g.fillRect(0, 0, w, h);
+      g.fillStyle = "#6c7177";
+      for (let x = 0; x < w; x += 16) g.fillRect(x, 0, 4, h);
+      for (let y = 0; y < h; y += 32) g.fillRect(0, y, w, 3);
+    }, true)
+  );
+  T.slats = shared(
+    cvt(256, 256, (g, w, h) => {
+      for (let x = 0; x < w; x += 32) {
+        g.fillStyle = `hsl(28, 38%, ${rnd(30, 38)}%)`;
+        g.fillRect(x, 0, 26, h);
+        g.fillStyle = "#1a120c";
+        g.fillRect(x + 26, 0, 6, h);
+      }
+    }, true)
+  );
+  T.paving = shared(
+    cvt(512, 512, (g, w, h) => {
+      g.fillStyle = "#d9cdb8";
+      g.fillRect(0, 0, w, h);
+      for (let y = 0; y < h; y += 64)
+        for (let x = 0; x < w; x += 128) {
+          g.fillStyle = `hsl(36, 22%, ${rnd(74, 82)}%)`;
+          g.fillRect(x + ((y / 64) % 2) * 64 + 1, y + 1, 126, 62);
+        }
+    }, true)
+  );
+  T.sand = shared(
+    cvt(512, 512, (g, w, h) => {
+      g.fillStyle = "#d2b98f";
+      g.fillRect(0, 0, w, h);
+      speckle(g, w, h, 14000, "rgba(120,90,50,0.12)", 2);
+    }, true)
+  );
+  T.cardboard = shared(
+    cvt(256, 256, (g, w, h) => {
+      g.fillStyle = "#b98c57";
+      g.fillRect(0, 0, w, h);
+      speckle(g, w, h, 3000, "rgba(90,60,30,0.12)", 1.5);
+      g.fillStyle = "rgba(225,205,160,0.75)";
+      g.fillRect(w / 2 - 18, 0, 36, h);
+    })
+  );
+  T.blob = shared(
+    cvt(128, 128, (g, w, h) => {
+      const rg = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+      rg.addColorStop(0, "rgba(0,0,0,0.55)");
+      rg.addColorStop(0.6, "rgba(0,0,0,0.25)");
+      rg.addColorStop(1, "rgba(0,0,0,0)");
+      g.fillStyle = rg;
+      g.fillRect(0, 0, w, h);
+    })
+  );
+  // city facades, day map and night window lights
+  T.city = shared(
+    cvt(256, 256, (g, w, h) => {
+      g.fillStyle = "#7f8f9e";
+      g.fillRect(0, 0, w, h);
+      for (let y = 0; y < h; y += 8) {
+        g.fillStyle = "rgba(30,40,52,0.45)";
+        g.fillRect(0, y, w, 3);
+      }
+      for (let x = 0; x < w; x += 16) {
+        g.fillStyle = "rgba(220,228,236,0.4)";
+        g.fillRect(x, 0, 2, h);
+      }
+    }, true)
+  );
+  T.cityLights = shared(
+    cvt(256, 256, (g, w, h) => {
+      g.fillStyle = "#000";
+      g.fillRect(0, 0, w, h);
+      for (let y = 0; y < h; y += 8)
+        for (let x = 0; x < w; x += 16)
+          if (Math.random() < 0.38) {
+            g.fillStyle = `hsl(${rnd(30, 45)}, 90%, ${rnd(50, 75)}%)`;
+            g.fillRect(x + 3, y + 3, 11, 4);
+          }
+    }, true)
+  );
+  T.cloud = shared(
+    cvt(256, 256, (g, s) => {
+      for (let i = 0; i < 9; i++) {
+        const x = s * rnd(0.25, 0.75), y = s * rnd(0.4, 0.6), r = s * rnd(0.14, 0.3);
+        const rg = g.createRadialGradient(x, y, 0, x, y, r);
+        rg.addColorStop(0, "rgba(255,255,255,0.55)");
+        rg.addColorStop(1, "rgba(255,255,255,0)");
+        g.fillStyle = rg;
+        g.fillRect(0, 0, s, s);
+      }
+    })
+  );
+}
+
+// ---------- shared materials ----------
+const M = {};
+function initMaterials() {
+  const s = (o) => shared(new THREE.MeshStandardMaterial(o));
+  M.white = s({ color: 0xf3f1ed, roughness: 0.55 });
+  M.plaster = s({ color: 0xece8e1, roughness: 0.9 });
+  M.stone = s({ color: 0xd8ccb8, roughness: 0.75 });
+  M.stoneDark = s({ color: 0x3b3936, roughness: 0.35 });
+  M.black = s({ color: 0x1b1d20, roughness: 0.45 });
+  M.charcoal = s({ color: 0x2e3238, roughness: 0.7 });
+  M.steel = s({ color: 0xc4cbd2, metalness: 1, roughness: 0.3 });
+  M.steelDark = s({ color: 0x5d646c, metalness: 1, roughness: 0.4 });
+  M.brushed = s({ map: T.brushed, metalness: 1, roughness: 0.32 });
+  M.brass = s({ color: 0xc9a35f, metalness: 1, roughness: 0.28 });
+  M.wood = s({ map: T.grain, roughness: 0.5 });
+  M.woodDark = s({ color: 0x4a2f1d, roughness: 0.45 });
+  M.woodLight = s({ color: 0xc9a77c, roughness: 0.55 });
+  M.fabric = s({ color: 0x59606b, roughness: 0.95 });
+  M.fabricWarm = s({ color: 0x9c8b78, roughness: 0.95 });
+  M.fabricBlue = s({ color: 0x2f4f6f, roughness: 0.95 });
+  M.leather = s({ color: 0x6e4630, roughness: 0.5 });
+  M.leaf = s({ color: 0x3d6b35, roughness: 0.75, side: THREE.DoubleSide });
+  M.leaf2 = s({ color: 0x5a8a3e, roughness: 0.75, side: THREE.DoubleSide });
+  M.pot = s({ color: 0xd9d3c9, roughness: 0.6 });
+  M.potDark = s({ color: 0x2f2f2f, roughness: 0.5 });
+  M.soil = s({ color: 0x3a2a1c, roughness: 1 });
+  M.mullion = s({ color: 0x80898f, metalness: 0.9, roughness: 0.35 });
+  M.book = s({ color: 0xffffff, roughness: 0.8 });
+  M.yellow = s({ color: 0xf2c230, roughness: 0.5 });
+  M.red = s({ color: 0xb8322a, roughness: 0.5 });
+  M.green = s({ color: 0x3f6b4f, roughness: 0.6 });
+  M.machine = s({ color: 0x55636a, metalness: 0.5, roughness: 0.5 });
+  M.glass = shared(new THREE.MeshPhysicalMaterial({ color: 0xdfeaf2, roughness: 0.03, metalness: 0, transparent: true, opacity: 0.12, envMapIntensity: 1.4, depthWrite: false, side: THREE.DoubleSide }));
+  M.glassTint = shared(new THREE.MeshPhysicalMaterial({ color: 0xbfd2de, roughness: 0.05, transparent: true, opacity: 0.22, envMapIntensity: 1.2, depthWrite: false, side: THREE.DoubleSide }));
+  M.bottle = shared(new THREE.MeshPhysicalMaterial({ color: 0x7a4a1c, roughness: 0.1, transparent: true, opacity: 0.8 }));
+  M.lightPanel = shared(new THREE.MeshBasicMaterial({ color: 0xfff4e2, toneMapped: false }));
+  M.coolPanel = shared(new THREE.MeshBasicMaterial({ color: 0xeef6ff, toneMapped: false }));
+  M.bulb = shared(new THREE.MeshBasicMaterial({ color: 0xffd9a0, toneMapped: false }));
+  M.redLed = shared(new THREE.MeshBasicMaterial({ color: 0xff3b30, toneMapped: false }));
+  M.greenLed = shared(new THREE.MeshBasicMaterial({ color: 0x3dff7a, toneMapped: false }));
+  M.shadow = shared(new THREE.MeshBasicMaterial({ map: T.blob, transparent: true, depthWrite: false, color: 0x000000 }));
+}
+
+// ---------- geometry helpers ----------
+const mesh = (geo, mat) => new THREE.Mesh(geo, mat);
+const B = (w, h, d, mat, r = 0) => mesh(r ? new RoundedBoxGeometry(w, h, d, 3, Math.min(r, w / 2 - 0.001, h / 2 - 0.001, d / 2 - 0.001)) : new THREE.BoxGeometry(w, h, d), mat);
+const C = (rt, rb, h, mat, seg = 24, open = false) => mesh(new THREE.CylinderGeometry(rt, rb, h, seg, 1, open), mat);
+const P = (w, h, mat) => mesh(new THREE.PlaneGeometry(w, h), mat);
+const S = (r, mat, ws = 20, hs = 14) => mesh(new THREE.SphereGeometry(r, ws, hs), mat);
+function put(parent, o, x = 0, y = 0, z = 0, ry = 0, rx = 0, rz = 0) {
+  o.position.set(x, y, z);
+  o.rotation.set(rx, ry, rz);
+  parent.add(o);
+  return o;
+}
+function grp(parent, x = 0, y = 0, z = 0, ry = 0) {
+  return put(parent, new THREE.Group(), x, y, z, ry);
+}
+const basic = (map, o = {}) => new THREE.MeshBasicMaterial({ map, toneMapped: false, ...o });
+const std = (o) => new THREE.MeshStandardMaterial(o);
+const blob = (p, w, d, x = 0, z = 0) => put(p, P(w, d, M.shadow), x, 0.008, z, 0, -Math.PI / 2);
+// a cylinder between two points (pipes, braces, rails)
+function rod(p, a, b, r, mat, seg = 10) {
+  const va = new THREE.Vector3(...a), vb = new THREE.Vector3(...b);
+  const len = va.distanceTo(vb);
+  const m = C(r, r, len, mat, seg);
+  m.position.copy(va).add(vb).multiplyScalar(0.5);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), vb.clone().sub(va).normalize());
+  p.add(m);
+  return m;
+}
+// a framed screen that glows
+function screen(p, w, h, tex, x, y, z, ry = 0, bezel = 0.03) {
+  const g = grp(p, x, y, z, ry);
+  put(g, B(w + bezel * 2, h + bezel * 2, 0.04, M.black, 0.01), 0, 0, 0);
+  put(g, P(w, h, basic(tex)), 0, 0, 0.021);
+  return g;
+}
+// a printed or painted panel (lit by the room)
+function panel(p, w, h, tex, x, y, z, ry = 0, o = {}) {
+  return put(p, P(w, h, std({ map: tex, roughness: 0.8, transparent: !!o.transparent, ...o })), x, y, z, ry);
+}
+// wall frame: local +z points into the room and local +x is to the right of someone facing the wall
+function wallFrame(p, side, w, d) {
+  const [x, z, ry] = { front: [0, -d / 2, 0], back: [0, d / 2, Math.PI], left: [-w / 2, 0, Math.PI / 2], right: [w / 2, 0, -Math.PI / 2] }[side];
+  return grp(p, x, 0, z, ry);
+}
+
+// ---------- furniture ----------
+function desk(p, x, z, ry = 0, o = {}) {
+  const w = o.w || 1.6, d = o.d || 0.8;
+  const g = grp(p, x, 0, z, ry);
+  put(g, B(w, 0.04, d, o.top || M.white, 0.01), 0, 0.74, 0);
+  for (const sx of [-1, 1]) put(g, B(0.05, 0.72, d - 0.1, M.steelDark), sx * (w / 2 - 0.06), 0.36, 0);
+  put(g, B(w - 0.2, 0.3, 0.02, M.steelDark), 0, 0.55, d / 2 - 0.12);
+  blob(g, w + 0.4, d + 0.4);
+  return g;
+}
+function chair(p, x, z, ry = 0, mat = M.fabric) {
+  const g = grp(p, x, 0, z, ry);
+  put(g, B(0.5, 0.08, 0.48, mat, 0.03), 0, 0.48, 0);
+  put(g, B(0.46, 0.56, 0.06, mat, 0.025), 0, 0.84, 0.25, 0, -0.12);
+  put(g, C(0.025, 0.025, 0.38, M.steel, 8), 0, 0.27, 0);
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2;
+    put(g, B(0.3, 0.03, 0.04, M.black), Math.cos(a) * 0.15, 0.06, Math.sin(a) * 0.15, -a);
+    put(g, S(0.025, M.black, 8, 6), Math.cos(a) * 0.29, 0.03, Math.sin(a) * 0.29);
+  }
+  blob(g, 0.8, 0.8);
+  return g;
+}
+function monitor(p, x, y, z, ry, tex, w = 0.6, h = 0.34) {
+  const g = grp(p, x, y, z, ry);
+  screen(g, w, h, tex, 0, 0.3, 0, 0, 0.012);
+  put(g, B(0.04, 0.16, 0.03, M.steelDark), 0, 0.08, -0.04);
+  put(g, B(0.22, 0.012, 0.16, M.steelDark, 0.005), 0, 0.006, -0.02);
+  return g;
+}
+function laptop(p, x, y, z, ry, tex) {
+  const g = grp(p, x, y, z, ry);
+  put(g, B(0.34, 0.014, 0.24, M.steel, 0.005), 0, 0.007, 0);
+  const lid = grp(g, 0, 0.014, -0.12, 0);
+  lid.rotation.x = -0.28;
+  put(lid, B(0.34, 0.23, 0.008, M.steel, 0.003), 0, 0.115, 0);
+  if (tex) put(lid, P(0.31, 0.2, basic(tex)), 0, 0.118, 0.0045);
+  return g;
+}
+function plant(p, x, z, s = 1, dark = false) {
+  const g = grp(p, x, 0, z, rnd(Math.PI * 2));
+  put(g, C(0.24 * s, 0.18 * s, 0.5 * s, dark ? M.potDark : M.pot, 24), 0, 0.25 * s, 0);
+  put(g, C(0.22 * s, 0.22 * s, 0.02, M.soil, 20), 0, 0.49 * s, 0);
+  put(g, C(0.02 * s, 0.03 * s, 0.9 * s, M.woodDark, 6), 0, 0.9 * s, 0);
+  const leafGeo = new THREE.IcosahedronGeometry(0.22 * s, 1);
+  for (let i = 0; i < 16; i++) {
+    const a = rnd(Math.PI * 2), r = rnd(0.05, 0.38) * s, y = rnd(0.75, 1.65) * s;
+    const m = mesh(leafGeo, i % 3 ? M.leaf : M.leaf2);
+    m.scale.set(rnd(0.7, 1.2), rnd(0.5, 0.8), rnd(0.7, 1.2));
+    put(g, m, Math.cos(a) * r, y, Math.sin(a) * r, rnd(3), rnd(1));
+  }
+  blob(g, 0.9 * s, 0.9 * s);
+  return g;
+}
+function sofa(p, x, z, ry = 0, w = 2.2, mat = M.fabricWarm) {
+  const g = grp(p, x, 0, z, ry);
+  put(g, B(w, 0.38, 0.92, mat, 0.06), 0, 0.21, 0);
+  put(g, B(w, 0.48, 0.22, mat, 0.07), 0, 0.62, 0.35);
+  for (const sx of [-1, 1]) put(g, B(0.22, 0.58, 0.92, mat, 0.07), sx * (w / 2 - 0.11), 0.31, 0);
+  const n = w > 1.6 ? 2 : 1;
+  for (let i = 0; i < n; i++) put(g, B((w - 0.48) / n - 0.03, 0.14, 0.66, mat, 0.06), -((w - 0.48) / 2) + ((w - 0.48) / n) * (i + 0.5), 0.46, -0.06);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) put(g, C(0.02, 0.02, 0.04, M.black, 6), sx * (w / 2 - 0.1), 0.02, sz * 0.38);
+  blob(g, w + 0.5, 1.4);
+  return g;
+}
+function armchair(p, x, z, ry = 0, mat = M.leather) {
+  const g = grp(p, x, 0, z, ry);
+  put(g, B(0.82, 0.36, 0.82, mat, 0.08), 0, 0.24, 0);
+  put(g, B(0.82, 0.5, 0.2, mat, 0.08), 0, 0.62, 0.32, 0, -0.08);
+  for (const sx of [-1, 1]) put(g, B(0.16, 0.5, 0.8, mat, 0.07), sx * 0.36, 0.34, 0);
+  put(g, B(0.56, 0.12, 0.6, mat, 0.05), 0, 0.46, -0.04);
+  blob(g, 1.2, 1.2);
+  return g;
+}
+function lowTable(p, x, z, w = 1.2, d = 0.6, mat = M.stoneDark, h = 0.4) {
+  const g = grp(p, x, 0, z);
+  put(g, B(w, 0.05, d, mat, 0.02), 0, h, 0);
+  put(g, B(w * 0.6, h - 0.02, d * 0.5, M.black, 0.02), 0, (h - 0.02) / 2, 0);
+  blob(g, w + 0.3, d + 0.3);
+  return g;
+}
+function rug(p, x, z, w, d, color) {
+  return put(p, P(w, d, std({ map: rep(T.carpet, w / 2, d / 2), color, roughness: 1 })), x, 0.012, z, 0, -Math.PI / 2);
+}
+function bookshelf(p, x, z, ry = 0, w = 2.2, h = 3.2) {
+  const g = grp(p, x, 0, z, ry);
+  const D = 0.36;
+  for (const sx of [-1, 1]) put(g, B(0.05, h, D, M.woodDark), sx * (w / 2 - 0.025), h / 2, 0);
+  put(g, B(w, h, 0.02, M.woodDark), 0, h / 2, -D / 2 + 0.01);
+  const shelves = 6, sh = (h - 0.1) / shelves;
+  const books = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), M.book, shelves * 60);
+  const tmp = new THREE.Object3D();
+  const colors = ["#7a2e2a", "#2c4a6b", "#2f5a3f", "#b88a3b", "#5a3a5e", "#d8d0c0", "#1f2a36", "#8c5a2b", "#3d3d3d"].map((c) => new THREE.Color(c));
+  let n = 0;
+  for (let s = 0; s < shelves; s++) {
+    const y0 = 0.05 + s * sh;
+    put(g, B(w - 0.1, 0.03, D - 0.02, M.woodDark), 0, y0, 0);
+    let bx = -w / 2 + 0.08;
+    while (bx < w / 2 - 0.12 && n < books.count) {
+      const bw = rnd(0.025, 0.06), bh = rnd(0.62, 0.92) * (sh - 0.06);
+      if (Math.random() < 0.06) {
+        bx += rnd(0.08, 0.2);
+        continue;
+      }
+      tmp.position.set(bx + bw / 2, y0 + 0.015 + bh / 2, rnd(-0.02, 0.02));
+      tmp.rotation.set(0, 0, Math.random() < 0.05 ? 0.15 : 0);
+      tmp.scale.set(bw, bh, rnd(0.2, 0.28));
+      tmp.updateMatrix();
+      books.setMatrixAt(n, tmp.matrix);
+      books.setColorAt(n, pick(colors));
+      bx += bw + 0.003;
+      n++;
+    }
+  }
+  put(g, B(w, 0.04, D, M.woodDark), 0, h, 0);
+  books.count = n;
+  g.add(books);
+  return g;
+}
+function pendant(p, x, z, ceilH, drop = 1.2, r = 0.22, mat = M.black) {
+  const g = grp(p, x, ceilH, z);
+  put(g, C(0.004, 0.004, drop, M.black, 4), 0, -drop / 2, 0);
+  put(g, C(0.03, r, 0.24, mat, 24, true), 0, -drop - 0.12, 0);
+  put(g, S(0.06, M.bulb, 10, 8), 0, -drop - 0.2, 0);
+  return g;
+}
+function bankerLamp(p, x, y, z, ry = 0) {
+  const g = grp(p, x, y, z, ry);
+  put(g, C(0.08, 0.09, 0.03, M.brass, 16), 0, 0.015, 0);
+  put(g, C(0.012, 0.012, 0.28, M.brass, 8), 0, 0.15, 0);
+  const shade = put(g, mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.28, 16, 1, true, 0, Math.PI), std({ color: 0x1f6b3a, roughness: 0.2, side: THREE.DoubleSide })), 0, 0.31, 0.02, 0, 0, Math.PI / 2);
+  shade.rotation.y = Math.PI / 2;
+  put(g, C(0.02, 0.02, 0.2, M.bulb, 8), 0, 0.29, 0.02, 0, 0, Math.PI / 2);
+  return g;
+}
+function cup(p, x, y, z, mat = M.white) {
+  put(p, C(0.04, 0.035, 0.09, mat, 14), x, y + 0.045, z);
+}
+function column(p, x, z, h, r, mat) {
+  put(p, C(r, r, h, mat, 40), x, h / 2, z);
+  put(p, C(r + 0.06, r + 0.06, 0.12, M.brass, 40), x, 0.06, z);
+}
+function railing(p, x0, x1, z, h = 1.05, mat = M.steel, posts = 1.5) {
+  rod(p, [x0, h, z], [x1, h, z], 0.025, mat);
+  rod(p, [x0, h * 0.5, z], [x1, h * 0.5, z], 0.012, mat);
+  for (let x = x0; x <= x1 + 0.01; x += posts) rod(p, [x, 0, z], [x, h, z], 0.02, mat);
+}
+function binoculars(p, x, z, ry = 0) {
+  const g = grp(p, x, 0, z, ry);
+  const paint = std({ color: 0x2c4f7a, metalness: 0.6, roughness: 0.35 });
+  put(g, C(0.18, 0.24, 0.05, M.steelDark, 20), 0, 0.025, 0);
+  put(g, C(0.05, 0.06, 1.05, paint, 14), 0, 0.55, 0);
+  const head = grp(g, 0, 1.18, 0);
+  head.rotation.x = -0.12;
+  put(head, B(0.42, 0.2, 0.32, paint, 0.08), 0, 0, 0);
+  for (const sx of [-0.09, 0.09]) {
+    put(head, C(0.06, 0.07, 0.24, paint, 16), sx, 0.02, -0.24, 0, Math.PI / 2);
+    put(head, C(0.045, 0.045, 0.02, M.glassTint, 16), sx, 0.02, -0.37, 0, Math.PI / 2);
+    put(head, C(0.025, 0.03, 0.08, M.black, 12), sx * 0.7, 0.03, 0.2, 0, Math.PI / 2);
+  }
+  blob(g, 0.8, 0.8);
+  return g;
+}
+
+// ---------- room shell: floor, ceiling, walls, the window wall and the lift lobby ----------
+function solidWall(p, len, h, x, z, ry, mat, o) {
+  const f = grp(p, x, 0, z, ry);
+  put(f, P(len, h, mat), 0, h / 2, 0);
+  put(f, B(len, 0.1, 0.02, o.base || M.charcoal), 0, 0.05, 0.01);
+  if (o.wainscot) put(f, B(len, 1.1, 0.03, o.wainscot), 0, 0.55, 0.015);
+  return f;
+}
+// floor-to-ceiling glass with mullions, and the tower's steel fins just outside it
+function glassWall(p, len, h, x, z, ry, o) {
+  const f = grp(p, x, 0, z, ry);
+  const n = Math.max(2, Math.round(len / 1.55));
+  const sp = len / n;
+  const head = o.head ?? 0.35;
+  for (let i = 0; i <= n; i++) {
+    const mx = -len / 2 + i * sp;
+    put(f, B(0.07, h, 0.12, M.mullion), mx, h / 2, -0.04);
+    put(f, B(0.06, h + 0.6, 0.45, M.steel), mx, h / 2 - 0.3, -0.36);
+  }
+  put(f, B(len, head, 0.3, o.headMat || M.white), 0, h - head / 2, -0.1);
+  put(f, B(len, 0.08, 0.36, M.mullion), 0, 0.04, -0.06);
+  put(f, P(len, h - head, M.glass), 0, (h - head) / 2, -0.06);
+  // the floor slab edge outside, so looking down shows the tower falling away
+  put(f, B(len + 1, 0.6, 1.4, M.steelDark), 0, -0.3, -0.8);
+  if (o.louvers) for (let y = 0.5; y < h - head; y += 0.32) put(f, B(len, 0.02, 0.22, M.steelDark), 0, y, -0.2, 0, 0.6);
+  return f;
+}
+function liftWall(p, w, d, h, level, o) {
+  const f = wallFrame(p, "back", w, d);
+  const plaque = cvt(256, 80, (g, W, H) => {
+    g.fillStyle = "#0b0b0c";
+    g.fillRect(0, 0, W, H);
+    txt(g, "▲ " + level, W / 2, H / 2 + 3, `600 44px ${FM}`, "#ffb547", "center", "middle");
+  });
+  const xs = o.liftX || [-1.8, 1.8];
+  for (const x of xs) {
+    put(f, B(1.8, 2.8, 0.1, M.steelDark), x, 1.4, 0.05);
+    put(f, B(0.69, 2.5, 0.03, M.brushed), x - 0.35, 1.25, 0.11);
+    put(f, B(0.69, 2.5, 0.03, M.brushed), x + 0.35, 1.25, 0.11);
+    put(f, P(0.42, 0.13, basic(plaque)), x, 2.95, 0.06);
+  }
+  for (let i = 0; i < xs.length - 1; i++) {
+    const cx = (xs[i] + xs[i + 1]) / 2;
+    put(f, B(0.14, 0.32, 0.03, M.steel), cx, 1.15, 0.02);
+    for (const y of [1.22, 1.08]) put(f, mesh(new THREE.CircleGeometry(0.025, 20), M.bulb), cx, y, 0.037);
+  }
+  if (o.levelSign !== false && level !== "G") {
+    const t = cvt(512, 256, (g, W, H) => {
+      txt(g, level, W / 2, H / 2 + 10, `800 220px ${FD}`, o.signColor || "#2b2f35", "center", "middle");
+    });
+    panel(f, 1.4, 0.7, t, 0, 3.2 > h - 0.6 ? h - 0.7 : 3.2, 0.012, 0, { transparent: true });
+  }
+  return f;
+}
+function shell(c, o) {
+  const { w, d, h } = o;
+  const g = c.g;
+  put(g, P(w, d, o.floor), 0, 0, 0, 0, -Math.PI / 2);
+  put(g, P(w, d, o.ceil || std({ map: rep(T.ceil, w / 1.2, d / 1.2), roughness: 0.95 })), 0, h, 0, 0, Math.PI / 2);
+  const sides = { front: [0, -d / 2, 0, w], back: [0, d / 2, Math.PI, w], left: [-w / 2, 0, Math.PI / 2, d], right: [w / 2, 0, -Math.PI / 2, d] };
+  for (const [name, [x, z, ry, len]] of Object.entries(sides)) {
+    if (o.glass.includes(name)) glassWall(g, len, h, x, z, ry, o);
+    else solidWall(g, len, h, x, z, ry, o.wall || M.plaster, o);
+  }
+  if (o.lift !== false) liftWall(g, w, d, h, c.f.level === "Tip" ? "828" : c.f.level, o);
+}
+function ceilingPanels(p, w, d, h, sx = 3.6, sz = 3, pw = 1.2, pd = 0.6, mat = M.lightPanel) {
+  for (let x = -w / 2 + sx / 2; x < w / 2 - 0.5; x += sx)
+    for (let z = -d / 2 + sz / 2; z < d / 2 - 0.5; z += sz) put(p, P(pw, pd, mat), x, h - 0.006, z, 0, Math.PI / 2);
+}
+function downlights(p, w, d, h, s = 2.4, mat = M.lightPanel) {
+  const geo = shared(new THREE.CircleGeometry(0.075, 16));
+  for (let x = -w / 2 + s / 2; x < w / 2; x += s) for (let z = -d / 2 + s / 2; z < d / 2; z += s) put(p, mesh(geo, mat), x, h - 0.006, z, 0, Math.PI / 2);
+}
+function lights(p, pts, y, I = 20, color = 0xfff1de, amb = 0.4) {
+  for (const [x, z] of pts) {
+    const l = new THREE.PointLight(color, I, 0, 2);
+    l.position.set(x, y, z);
+    p.add(l);
+  }
+  p.add(new THREE.AmbientLight(color, amb));
+}
+
+// ---------- printed things: signs, screens, boards ----------
+function signTex(lines, W = 1024, H = 256, o = {}) {
+  return cvt(W, H, (g) => {
+    if (o.bg) {
+      g.fillStyle = o.bg;
+      g.fillRect(0, 0, W, H);
+    }
+    for (const l of lines) {
+      if (l.glow) {
+        g.shadowColor = l.glow;
+        g.shadowBlur = l.blur || 24;
+      }
+      if (l.spacing) g.letterSpacing = l.spacing;
+      txt(g, l.t, l.x ?? (o.align === "left" ? 40 : W / 2), l.y, l.f, l.c, l.a || o.align || "center", "middle");
+      g.shadowBlur = 0;
+      g.letterSpacing = "0px";
+    }
+  });
+}
+function uiFrame(g, W, H, title, accent = "#e3b96c", bg = "#0f1520") {
+  g.fillStyle = bg;
+  g.fillRect(0, 0, W, H);
+  g.fillStyle = "rgba(255,255,255,0.05)";
+  g.fillRect(0, 0, W, 64);
+  for (const [i, c] of ["#ff5f57", "#febc2e", "#28c840"].entries()) {
+    g.beginPath();
+    g.arc(30 + i * 24, 32, 7, 0, 7);
+    g.fillStyle = c;
+    g.fill();
+  }
+  txt(g, title, 110, 33, `600 24px ${FB}`, "#e9eef4", "left", "middle");
+  g.fillStyle = accent;
+  g.fillRect(0, 62, W, 2);
+}
+function candles(g, x, y, w, h, n, seed = 1) {
+  let v = 50;
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const o = v, c = v + rnd(-4, 4.6), hi = Math.max(o, c) + rnd(2), lo = Math.min(o, c) - rnd(2);
+    pts.push([o, c, hi, lo]);
+    v = c;
+  }
+  const all = pts.flat(), mn = Math.min(...all), mx = Math.max(...all);
+  const sy = (q) => y + h - ((q - mn) / (mx - mn)) * h;
+  const cw = w / n;
+  g.strokeStyle = "rgba(255,255,255,0.06)";
+  for (let k = 0; k < 6; k++) {
+    g.beginPath();
+    g.moveTo(x, y + (h / 5) * k);
+    g.lineTo(x + w, y + (h / 5) * k);
+    g.stroke();
+  }
+  pts.forEach(([o, c, hi, lo], i) => {
+    const col = c >= o ? "#34d399" : "#f87171";
+    g.strokeStyle = col;
+    g.fillStyle = col;
+    const cx = x + i * cw + cw / 2;
+    g.beginPath();
+    g.moveTo(cx, sy(hi));
+    g.lineTo(cx, sy(lo));
+    g.stroke();
+    g.fillRect(cx - cw * 0.32, Math.min(sy(o), sy(c)), cw * 0.64, Math.max(2, Math.abs(sy(o) - sy(c))));
+  });
+}
+function lineChart(g, x, y, w, h, color, n = 60, trend = 0.6) {
+  let v = 0;
+  const pts = [];
+  for (let i = 0; i < n; i++) pts.push((v += rnd(-1, 1) + trend * 0.3));
+  const mn = Math.min(...pts), mx = Math.max(...pts);
+  const P2 = (i) => [x + (i / (n - 1)) * w, y + h - ((pts[i] - mn) / (mx - mn || 1)) * h];
+  const grad = g.createLinearGradient(0, y, 0, y + h);
+  grad.addColorStop(0, color + "55");
+  grad.addColorStop(1, color + "00");
+  g.beginPath();
+  g.moveTo(x, y + h);
+  for (let i = 0; i < n; i++) g.lineTo(...P2(i));
+  g.lineTo(x + w, y + h);
+  g.fillStyle = grad;
+  g.fill();
+  g.beginPath();
+  for (let i = 0; i < n; i++) g[i ? "lineTo" : "moveTo"](...P2(i));
+  g.strokeStyle = color;
+  g.lineWidth = 3;
+  g.stroke();
+  g.lineWidth = 1;
+}
+function greyLines(g, x, y, w, n, lh = 22, color = "rgba(255,255,255,0.16)") {
+  g.fillStyle = color;
+  for (let i = 0; i < n; i++) g.fillRect(x, y + i * lh, w * rnd(0.55, 1), 8);
+}
+
+const SCREENS = {
+  kecChart: (g, W, H) => {
+    uiFrame(g, W, H, "POWERGRID · 15m", "#34d399");
+    txt(g, "₹312.40", 40, 120, `700 54px ${FM}`, "#fff");
+    txt(g, "▲ 1.2%", 300, 120, `600 34px ${FM}`, "#34d399");
+    candles(g, 40, 160, W - 80, H - 220, 48);
+  },
+  kecLine: (g, W, H) => {
+    uiFrame(g, W, H, "NIFTY INFRA · 1Y", "#60a5fa");
+    txt(g, "Infrastructure and power", 40, 112, `500 26px ${FB}`, "#9fb0c3");
+    lineChart(g, 40, 150, W - 80, H - 200, "#60a5fa", 80, 0.8);
+  },
+  kecSheet: (g, W, H) => {
+    g.fillStyle = "#fff";
+    g.fillRect(0, 0, W, H);
+    g.fillStyle = "#1d6f42";
+    g.fillRect(0, 0, W, 54);
+    txt(g, "Valuation model · DCF.xlsx", 24, 28, `600 24px ${FB}`, "#fff", "left", "middle");
+    const cols = ["", "FY23", "FY24E", "FY25E", "FY26E"];
+    const rows = ["Revenue", "EBITDA", "Margin", "Capex", "FCF", "WACC", "Terminal g", "Fair value"];
+    g.font = `400 20px ${FM}`;
+    for (let r = 0; r <= rows.length; r++)
+      for (let c = 0; c < cols.length; c++) {
+        const x = 20 + c * ((W - 40) / cols.length), y = 80 + r * 46;
+        g.strokeStyle = "#d9dee3";
+        g.strokeRect(x, y, (W - 40) / cols.length, 46);
+        const s = r === 0 ? cols[c] : c === 0 ? rows[r - 1] : (rnd(80, 990) | 0).toLocaleString("en-IN");
+        txt(g, s, x + 10, y + 24, `${r === 0 || c === 0 ? 600 : 400} 20px ${FM}`, r === rows.length && c > 0 ? "#1d6f42" : "#1f2937", "left", "middle");
+      }
+  },
+  kecHeat: (g, W, H) => {
+    uiFrame(g, W, H, "Sector heatmap", "#f59e0b");
+    const names = ["POWER", "INFRA", "CABLES", "RAIL", "EPC", "STEEL", "CEMENT", "UTIL", "TELECOM", "OIL", "METALS", "CAP GDS"];
+    names.forEach((n, i) => {
+      const x = 30 + (i % 4) * ((W - 60) / 4), y = 90 + Math.floor(i / 4) * ((H - 110) / 3);
+      const v = rnd(-2.5, 3);
+      g.fillStyle = v > 0 ? `rgba(52,211,153,${0.25 + v / 5})` : `rgba(248,113,113,${0.25 - v / 4})`;
+      g.fillRect(x + 4, y + 4, (W - 60) / 4 - 8, (H - 110) / 3 - 8);
+      txt(g, n, x + 20, y + 40, `700 26px ${FM}`, "#fff");
+      txt(g, (v > 0 ? "+" : "") + v.toFixed(2) + "%", x + 20, y + 80, `500 24px ${FM}`, "#fff");
+    });
+  },
+  orders: (g, W, H) => {
+    uiFrame(g, W, H, "SIGMA · Orders", "#f97316", "#fbfaf7");
+    txt(g, "Live orders", 30, 110, `700 30px ${FB}`, "#111");
+    const rows = [["#4821", "Hoodies × 120", "Club fest", "Printing"], ["#4822", "Tees × 300", "College fest", "Packed"], ["#4823", "Caps × 80", "Sports club", "Dispatched"], ["#4824", "Jackets × 45", "Batch 2025", "Design"], ["#4825", "Tees × 600", "Company offsite", "Printing"]];
+    rows.forEach((r, i) => {
+      const y = 150 + i * 56;
+      g.fillStyle = i % 2 ? "#f1efe9" : "#fff";
+      g.fillRect(24, y, W - 48, 50);
+      r.forEach((s, k) => txt(g, s, 40 + k * ((W - 80) / 4), y + 26, `${k === 3 ? 600 : 400} 20px ${FB}`, k === 3 ? "#ea580c" : "#222", "left", "middle"));
+    });
+  },
+  segments: (g, W, H) => {
+    uiFrame(g, W, H, "Customer segments · research", "#e3b96c");
+    const segs = [["Young families", 34, "#60a5fa"], ["Small business owners", 24, "#34d399"], ["Senior citizens", 18, "#f59e0b"], ["First-time buyers", 14, "#f472b6"], ["Other", 10, "#94a3b8"]];
+    let a = -Math.PI / 2;
+    const cx = W * 0.27, cy = H * 0.57, r = H * 0.3;
+    for (const [, v, c] of segs) {
+      g.beginPath();
+      g.moveTo(cx, cy);
+      g.arc(cx, cy, r, a, a + (v / 100) * Math.PI * 2);
+      g.fillStyle = c;
+      g.fill();
+      a += (v / 100) * Math.PI * 2;
+    }
+    g.beginPath();
+    g.arc(cx, cy, r * 0.55, 0, 7);
+    g.fillStyle = "#0f1520";
+    g.fill();
+    txt(g, "+15%", cx, cy, `800 54px ${FD}`, "#fff", "center", "middle");
+    segs.forEach(([n, v, c], i) => {
+      const y = 140 + i * 66;
+      g.fillStyle = c;
+      g.fillRect(W * 0.55, y, (v / 34) * W * 0.32, 26);
+      txt(g, `${n} · ${v}%`, W * 0.55, y + 50, `500 20px ${FB}`, "#cbd5e1");
+    });
+  },
+  stories: (g, W, H) => {
+    uiFrame(g, W, H, "User stories · Sprint 14", "#a78bfa", "#fbfbfd");
+    const st = ["As an ops lead, I want delays flagged by stage so I can fix the slowest step.", "As a designer, I want specs linked to tickets so handoff takes one click.", "As a PM, I want on-time delivery tracked weekly so we see drift early."];
+    st.forEach((s, i) => {
+      const y = 100 + i * 120;
+      rr(g, 30, y, W - 60, 100, 10, "#fff");
+      g.strokeStyle = "#e4e4ec";
+      g.stroke();
+      g.font = `400 22px ${FB}`;
+      g.fillStyle = "#222";
+      wrapText(g, s, 50, y + 38, W - 100, 30);
+    });
+  },
+  landing: (g, W, H) => {
+    g.fillStyle = "#fff";
+    g.fillRect(0, 0, W, H);
+    g.fillStyle = "#0b3b5c";
+    g.fillRect(0, 0, W, H * 0.55);
+    txt(g, "alokbansal.com", 30, 40, `700 24px ${FB}`, "#fff", "left", "middle");
+    txt(g, "Study abroad,", 30, 130, `800 64px ${FD}`, "#fff");
+    txt(g, "planned properly.", 30, 196, `800 64px ${FD}`, "#ffd27a");
+    rr(g, 30, 236, 300, 54, 27, "#ffd27a");
+    txt(g, "Book a free consultation", 180, 263, `600 20px ${FB}`, "#0b3b5c", "center", "middle");
+    ["UK", "USA", "Canada", "Australia", "Germany", "Ireland"].forEach((c, i) => {
+      const x = 30 + (i % 3) * ((W - 60) / 3), y = H * 0.6 + Math.floor(i / 3) * 90;
+      rr(g, x, y, (W - 60) / 3 - 14, 76, 8, "#f1f5f9");
+      txt(g, c, x + 18, y + 40, `600 24px ${FB}`, "#0b3b5c", "left", "middle");
+    });
+  },
+  marketplace: (g, W, H) => {
+    uiFrame(g, W, H, "Study abroad marketplace", "#ffd27a", "#f8fafc");
+    rr(g, 40, 90, W - 80, 64, 32, "#fff");
+    g.strokeStyle = "#dbe2ea";
+    g.stroke();
+    txt(g, "Search universities, courses, services…", 80, 123, `400 26px ${FB}`, "#94a3b8", "left", "middle");
+    const cats = ["Universities", "Test prep", "SOP review", "Visas", "Education loans", "Housing", "Scholarships", "Forex", "Insurance", "Flights", "Internships", "Alumni"];
+    const hues = [205, 25, 150, 260, 45, 330, 180, 100, 0, 220, 280, 60];
+    cats.forEach((c, i) => {
+      const cw = (W - 80) / 4, ch = (H - 210) / 3;
+      const x = 40 + (i % 4) * cw, y = 180 + Math.floor(i / 4) * ch;
+      rr(g, x + 6, y + 6, cw - 12, ch - 12, 12, "#fff");
+      rr(g, x + 6, y + 6, cw - 12, ch * 0.5, 12, `hsl(${hues[i]}, 60%, 82%)`);
+      txt(g, c, x + 24, y + ch * 0.72, `600 24px ${FB}`, "#0f172a", "left", "middle");
+    });
+  },
+  nivesh: (g, W, H) => {
+    uiFrame(g, W, H, "Nivesh AI", "#34d399", "#0b1210");
+    txt(g, "Portfolio value", 40, 112, `500 24px ${FB}`, "#86a99a");
+    txt(g, "₹4,82,310", 40, 175, `800 70px ${FD}`, "#fff");
+    txt(g, "XIRR 14.2%", 360, 168, `600 28px ${FM}`, "#34d399");
+    lineChart(g, 40, 210, W * 0.55, H - 260, "#34d399", 70, 0.9);
+    const bx = W * 0.62;
+    rr(g, bx, 100, W - bx - 30, 110, 16, "#16241f");
+    g.font = `400 23px ${FB}`;
+    g.fillStyle = "#cfe9dd";
+    wrapText(g, "Kya mujhe apni SIP badhani chahiye?", bx + 20, 140, W - bx - 70, 30);
+    rr(g, bx + 30, 230, W - bx - 60, 170, 16, "#1f7a57");
+    g.fillStyle = "#fff";
+    wrapText(g, "Haan. Aapki income 12% badhi hai, toh SIP ₹2,000 badhana safe hai. Equity mix 70% rakhein.", bx + 50, 270, W - bx - 100, 30);
+    txt(g, "Hinglish advisor · powered by Claude", bx, H - 40, `500 18px ${FM}`, "#6b8f80");
+  },
+  einvoice: (g, W, H) => {
+    uiFrame(g, W, H, "E-invoicing go-to-market", "#60a5fa");
+    txt(g, "Invoice → approve → pay", 40, 120, `800 52px ${FD}`, "#fff");
+    const steps = ["Issue e-invoice", "Clear with network", "Approve in app", "Pay or finance"];
+    steps.forEach((s, i) => {
+      const x = 40 + i * ((W - 80) / 4);
+      rr(g, x, 160, (W - 80) / 4 - 30, 90, 12, "#1b2a44");
+      txt(g, s, x + 18, 205, `600 22px ${FB}`, "#dbeafe", "left", "middle");
+      if (i < 3) txt(g, "→", x + (W - 80) / 4 - 26, 205, `600 30px ${FB}`, "#60a5fa", "left", "middle");
+    });
+    txt(g, "Mandates compared", 40, 310, `600 22px ${FM}`, "#93a4bd");
+    for (let i = 0; i < 5; i++) {
+      const y = 330 + i * 46;
+      g.fillStyle = "#16233a";
+      g.fillRect(40, y, W * 0.5, 38);
+      txt(g, `Market ${String.fromCharCode(65 + i)}`, 56, y + 20, `500 20px ${FB}`, "#cbd5e1", "left", "middle");
+      g.fillStyle = i < 2 ? "#34d399" : "#475569";
+      g.fillRect(W * 0.3, y + 10, (W * 0.18 * (5 - i)) / 5, 18);
+    }
+    txt(g, "2 launch markets", W * 0.62, 360, `800 46px ${FD}`, "#34d399");
+    txt(g, "7 partners shortlisted", W * 0.62, 420, `800 46px ${FD}`, "#fff");
+  },
+  tradepips: (g, W, H) => {
+    g.fillStyle = "#fffdf8";
+    g.fillRect(0, 0, W, H);
+    g.fillStyle = "#14532d";
+    g.fillRect(0, 0, W, 64);
+    txt(g, "TradePips", 30, 33, `800 32px ${FD}`, "#fff", "left", "middle");
+    txt(g, "Guide 13 · new every day", W - 30, 33, `500 18px ${FM}`, "#bbf7d0", "right", "middle");
+    txt(g, "What is a pip, really?", 40, 140, `800 58px ${FD}`, "#111");
+    greyLines(g, 40, 180, W * 0.52, 9, 30, "rgba(0,0,0,0.13)");
+    g.fillStyle = "#0f1520";
+    g.fillRect(W * 0.6, 110, W * 0.36, H - 160);
+    candles(g, W * 0.62, 140, W * 0.32, H - 220, 26);
+  },
+  hackerclub: (g, W, H) => {
+    g.fillStyle = "#0d1117";
+    g.fillRect(0, 0, W, H);
+    g.fillStyle = "#161b22";
+    g.fillRect(0, 0, W, 56);
+    txt(g, "HACKER CLUB · Contest 07", 24, 29, `600 22px ${FM}`, "#7ee787", "left", "middle");
+    txt(g, "01:42:10", W - 24, 29, `600 24px ${FM}`, "#ffa657", "right", "middle");
+    const code = [["def", "#ff7b72"], [" solve(grid):", "#d2a8ff"], ["    seen = set()", "#c9d1d9"], ["    best = 0", "#c9d1d9"], ["    for r, row in enumerate(grid):", "#c9d1d9"], ["        for c, v in enumerate(row):", "#c9d1d9"], ["            if v and (r, c) not in seen:", "#c9d1d9"], ["                best = max(best, flood(r, c))", "#79c0ff"], ["    return best", "#ff7b72"], ["", ""], ["# Accepted · 42 ms · 15/15 tests", "#7ee787"]];
+    code.forEach(([s, c], i) => {
+      txt(g, String(i + 1).padStart(2, " "), 20, 100 + i * 34, `400 20px ${FM}`, "#484f58");
+      txt(g, s, 70, 100 + i * 34, `400 22px ${FM}`, c);
+    });
+    const lx = W * 0.64;
+    g.fillStyle = "#161b22";
+    g.fillRect(lx, 70, W - lx - 20, H - 90);
+    txt(g, "Leaderboard", lx + 20, 110, `600 24px ${FB}`, "#e6edf3");
+    ["byte_bandit", "segtree", "dp_or_die", "null_ptr", "greedy_g"].forEach((n, i) => {
+      txt(g, `${i + 1}. ${n}`, lx + 20, 160 + i * 46, `400 22px ${FM}`, i === 0 ? "#ffa657" : "#c9d1d9");
+      txt(g, String(1500 - i * 85), W - 40, 160 + i * 46, `400 22px ${FM}`, "#7ee787", "right");
+    });
+  },
+  dataworld: (g, W, H) => {
+    uiFrame(g, W, H, "Data World 3D · Retail store", "#22d3ee");
+    [["Lost sales", "₹1.8L"], ["Stock-outs", "37"], ["Shelves", "412"], ["Fill rate", "94%"]].forEach(([l, v], i) => {
+      const x = 30 + i * ((W - 60) / 4);
+      rr(g, x + 6, 90, (W - 60) / 4 - 12, 110, 12, "#132033");
+      txt(g, v, x + 26, 150, `800 46px ${FD}`, "#fff");
+      txt(g, l, x + 26, 182, `500 18px ${FM}`, "#7dd3fc");
+    });
+    for (let i = 0; i < 14; i++) {
+      const h = rnd(60, 230);
+      g.fillStyle = i === 9 ? "#f97316" : "#22d3ee";
+      g.fillRect(40 + i * ((W - 80) / 14), H - 40 - h, (W - 80) / 14 - 10, h);
+    }
+  },
+  snapvanish: (g, W, H) => {
+    g.fillStyle = "#202124";
+    g.fillRect(0, 0, W, H);
+    const tw = (W - 60) / 2, th = (H - 120) / 2;
+    for (let i = 0; i < 4; i++) {
+      const x = 20 + (i % 2) * (tw + 20), y = 20 + Math.floor(i / 2) * (th + 20);
+      rr(g, x, y, tw, th, 12, "#3c4043");
+      const cx = x + tw / 2, cy = y + th * 0.45;
+      if (i === 1) {
+        for (let k = 0; k < 900; k++) {
+          const a = rnd(Math.PI * 2), r = rnd(th * 0.35);
+          g.fillStyle = `rgba(${rnd(160, 230) | 0},${rnd(130, 190) | 0},${rnd(110, 160) | 0},${rnd(0.3, 0.9)})`;
+          g.fillRect(cx + Math.cos(a) * r + k * 0.12, cy + Math.sin(a) * r * 1.3 - k * 0.05, 3, 3);
+        }
+      } else {
+        g.fillStyle = ["#c58b6b", "#8d5a3b", "#e0b48f", "#a36b4f"][i];
+        g.beginPath();
+        g.arc(cx, cy, th * 0.17, 0, 7);
+        g.fill();
+        g.beginPath();
+        g.ellipse(cx, y + th, th * 0.32, th * 0.3, 0, Math.PI, 0);
+        g.fill();
+      }
+      txt(g, ["Priya", "You · snapped", "Arjun", "Meera"][i], x + 16, y + th - 18, `500 20px ${FB}`, "#fff");
+    }
+    rr(g, W / 2 - 160, H - 80, 320, 60, 30, "#3c4043");
+    g.beginPath();
+    g.arc(W / 2 - 40, H - 50, 22, 0, 7);
+    g.fillStyle = "#ea4335";
+    g.fill();
+    txt(g, "Mic muted", W / 2 + 10, H - 49, `500 20px ${FB}`, "#fff", "left", "middle");
+  },
+};
+const screenTex = (key, W = 1280, H = 720) => cvt(W, H, SCREENS[key]);
+
+// ---------- the rooms ----------
+// Each builder fills c.g (floor at y = 0, windows facing -z, lifts on the +z wall) and returns
+// where you step out (spawn), what you look at first (look), and how far you walk in.
+
+function roomLobby(c) {
+  const w = 34, d = 26, h = 10, g = c.g;
+  shell(c, { w, d, h, floor: std({ map: rep(T.marble, w / 3, d / 3), roughness: 0.12 }), wall: M.stone, glass: ["front", "left"], ceil: M.white, headMat: M.stone, liftX: [-5.4, -1.8, 1.8, 5.4] });
+  put(g, mesh(new THREE.TorusGeometry(7, 0.07, 8, 120), M.lightPanel), 0, h - 0.25, -1, 0, Math.PI / 2);
+  put(g, C(7.4, 7.4, 0.5, M.white, 96, true), 0, h - 0.25, -1);
+  downlights(g, w, d, h, 3.2);
+  lights(g, [[-8, -6], [8, -6], [-8, 6], [8, 6]], h - 1.5, 45, 0xfff0dc, 0.3);
+
+  // reception and the name wall
+  const rc = grp(g, 12.2, 0, -1, -Math.PI / 2);
+  put(rc, B(6, 1.1, 1, M.stoneDark, 0.06), 0, 0.55, 0);
+  put(rc, B(6.3, 0.06, 1.25, M.white, 0.02), 0, 1.13, 0.05);
+  put(rc, B(6, 0.035, 0.02, M.brass), 0, 0.86, 0.51);
+  put(rc, C(0.08, 0.06, 0.3, M.glassTint, 16), -2, 1.31, 0);
+  for (let i = 0; i < 7; i++) put(rc, S(0.06, i % 2 ? M.red : M.white, 8, 6), -2 + rnd(-0.1, 0.1), 1.5 + rnd(0.1), rnd(-0.1, 0.1));
+  laptop(rc, 1.2, 1.16, -0.2, Math.PI, null);
+  blob(rc, 7, 2);
+  const rw = wallFrame(g, "right", w, d);
+  put(rw, B(14, 7.4, 0.12, std({ map: rep(T.slats, 14, 1), roughness: 0.6 })), -1, 4.7, 0.06);
+  put(rw, P(13, 2.4, basic(signTex([{ t: "GAURAV AGARWAL", y: 128, f: `800 210px ${FD}`, c: "#fff3dc", glow: "rgba(255,190,110,0.95)", blur: 40, spacing: "6px" }], 2048, 256), { transparent: true })), -1, 6.2, 0.14);
+  put(rw, P(10, 0.6, basic(signTex([{ t: "PRODUCT MANAGER · FOUNDER'S OFFICE · BUILDER", y: 64, f: `500 52px ${FM}`, c: "#f3dcb0", spacing: "8px" }], 2048, 128), { transparent: true })), -1, 4.75, 0.14);
+
+  // columns
+  const colMat = std({ map: rep(T.marble, 1, 3), roughness: 0.14 });
+  for (const [x, z] of [[-7, -6], [7, -6], [-7, 1.5], [7, 0.5]]) column(g, x, z, h, 0.7, colMat);
+
+  // scale model of the tower in a glass case
+  put(g, B(2, 1, 2, M.stoneDark, 0.04), 0, 0.5, -2.5);
+  const model = towerModel(3.4 / 828);
+  put(g, model, 0, 1.01, -2.5);
+  put(g, B(1.9, 3.7, 1.9, M.glassTint), 0, 2.86, -2.5);
+  panel(g, 1.4, 0.24, signTex([{ t: "GAURAV AGARWAL TOWER · 828 M · 1:245", y: 64, f: `600 46px ${FM}`, c: "#e3c58f" }], 1024, 128, { bg: "#2a2622" }), 0, 0.72, -1.49);
+  const spot = new THREE.SpotLight(0xfff2dc, 60, 12, 0.35, 0.5, 1.5);
+  spot.position.set(0, h - 0.4, -2.5);
+  spot.target.position.set(0, 1, -2.5);
+  g.add(spot, spot.target);
+
+  // building directory
+  const dir = grp(g, -12.5, 0, 7.5, Math.PI / 2);
+  put(dir, B(2.4, 3.2, 0.12, M.black, 0.02), 0, 1.9, 0);
+  put(dir, P(2.2, 3, basic(cvt(704, 960, (q, W, H) => {
+    q.fillStyle = "#121417";
+    q.fillRect(0, 0, W, H);
+    txt(q, "FLOOR DIRECTORY", 36, 60, `800 54px ${FD}`, "#e3b96c");
+    FLOORS.slice().reverse().forEach((f, i) => {
+      const y = 116 + i * 44;
+      txt(q, f.level === "Tip" ? "828m" : f.level, 36, y, `600 24px ${FM}`, "#e3b96c");
+      txt(q, f.title, 140, y, `500 25px ${FB}`, "#eef2f6");
+      txt(q, f.zone, W - 36, y, `400 18px ${FM}`, "#7f8a96", "right");
+    });
+  }))), 0, 1.9, 0.065);
+  for (const sx of [-0.8, 0.8]) put(dir, B(0.08, 0.3, 0.08, M.steelDark), sx, 0.15, 0);
+
+  // lounge by the windows
+  rug(g, -11.5, -5, 6, 4.4, 0xb9a68c);
+  sofa(g, -14, -5, Math.PI / 2, 2.6);
+  sofa(g, -9, -5, -Math.PI / 2, 2.6);
+  lowTable(g, -11.5, -5, 1.4, 0.8);
+  for (const [x, z, s] of [[-4, -11.6, 1.7], [4, -11.6, 1.7], [11, -11.6, 1.5], [-15.5, 2, 1.6], [-15.5, -11, 1.6]]) plant(g, x, z, s, true);
+  return { spawn: [0, 11.6], look: [17, 5, -1], walk: 3, maxPitch: 0.8 };
+}
+
+function roomLibrary(c) {
+  const w = 20, d = 14, h = 4.6, g = c.g;
+  shell(c, { w, d, h, floor: std({ map: rep(T.wood, w / 4, d / 4), roughness: 0.4 }), wall: std({ color: 0x3e5547, roughness: 0.9 }), wainscot: M.woodDark, glass: ["front", "left"] });
+  const rw = wallFrame(g, "right", w, d);
+  for (const x of [-5.95, -4.15, 4.15, 5.95]) bookshelf(rw, x, 0.2, 0, 1.8, 3.4);
+  put(rw, B(6, 2.7, 0.08, M.woodDark), 0, 2.05, 0.05);
+  put(rw, P(5.7, 2.45, std({ roughness: 0.95, map: cvt(1536, 660, (q, W, H) => {
+    q.fillStyle = "#26332c";
+    q.fillRect(0, 0, W, H);
+    speckle(q, W, H, 5000, "rgba(255,255,255,0.03)", 3);
+    q.globalAlpha = 0.86;
+    const L = [["∫ e^(−x²) dx = √π", 70, 120, 64], ["E[X] = Σ x · p(x)", 70, 230, 56], ["σ = F / A", 70, 330, 56], ["NPV = Σ CFₜ / (1+r)ᵗ", 70, 440, 54], ["Nash: no player gains by deviating", 70, 560, 44]];
+    L.forEach(([s, x, y, sz]) => txt(q, s, x, y, `500 ${sz}px ${FH}`, "#f1f1ea"));
+    q.strokeStyle = "#f1f1ea";
+    q.lineWidth = 3;
+    q.strokeRect(1000, 90, 440, 300);
+    q.beginPath();
+    q.moveTo(1220, 90);
+    q.lineTo(1220, 390);
+    q.moveTo(1000, 240);
+    q.lineTo(1440, 240);
+    q.stroke();
+    [["3, 3", 1110, 170], ["0, 5", 1330, 170], ["5, 0", 1110, 320], ["1, 1", 1330, 320]].forEach(([s, x, y]) => txt(q, s, x, y, `500 52px ${FH}`, "#f1f1ea", "center", "middle"));
+    txt(q, "Prisoner's dilemma", 1000, 450, `500 40px ${FH}`, "#f6e7a8");
+    q.beginPath();
+    for (let x = 0; x < 360; x++) q.lineTo(1000 + x, 590 - Math.sin(x / 30) * 40 * Math.exp(-x / 300));
+    q.stroke();
+  }) })), 0, 2.05, 0.1);
+  put(rw, P(4.2, 0.6, std({ map: signTex([{ t: "BITS PILANI", y: 64, f: `800 110px ${FD}`, c: "#d9b46a", spacing: "10px" }], 1024, 128), transparent: true, metalness: 0.6, roughness: 0.3 })), 0, 3.85, 0.06);
+  put(rw, P(4.2, 0.25, std({ map: signTex([{ t: "M.Sc. MATHEMATICS · B.E. MECHANICAL", y: 32, f: `500 34px ${FM}`, c: "#d9c9a0" }], 1024, 64), transparent: true })), 0, 3.4, 0.06);
+
+  for (const z of [-3.6, 0.4]) {
+    const t = grp(g, 2.5, 0, z);
+    put(t, B(5, 0.07, 1.3, M.wood, 0.02), 0, 0.76, 0);
+    for (const sx of [-2.2, 2.2]) put(t, B(0.12, 0.72, 1.1, M.woodDark), sx, 0.36, 0);
+    blob(t, 5.6, 2.2);
+    for (const sx of [-1.6, 0, 1.6]) for (const sz of [-1, 1]) chair(t, sx, sz * 0.95, sz > 0 ? 0 : Math.PI, M.leather);
+    bankerLamp(t, -1, 0.8, 0, 0);
+    bankerLamp(t, 1.4, 0.8, 0, 0);
+    for (let k = 0; k < 4; k++) put(t, B(0.24, 0.04, 0.32, pick([M.red, M.green, M.fabricBlue])), rnd(-2, 2), 0.81 + k * 0.04, rnd(-0.3, 0.3), rnd(0.4));
+  }
+  // a gear on the table, for the mechanical half of the degree
+  const gear = grp(g, 5.4, 0.95, -3.5);
+  put(gear, C(0.16, 0.16, 0.06, M.brass, 32), 0, 0, 0, 0, Math.PI / 2);
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    put(gear, B(0.05, 0.06, 0.06, M.brass), 0, Math.sin(a) * 0.18, Math.cos(a) * 0.18, 0, a);
+  }
+  c.updates.push((dt) => (gear.rotation.x += dt * 0.6));
+  for (const x of [1, 4]) for (const z of [-3.6, 0.4]) pendant(g, x, z, h, 1.6, 0.25, std({ color: 0x1e4d32, roughness: 0.3 }));
+  plant(g, -9, -6, 1.3);
+  armchair(g, -7.5, 3, Math.PI * 0.7);
+  armchair(g, -8.5, 1.2, Math.PI * 0.4);
+  lights(g, [[1, -3.6], [4, -3.6], [1, 0.4], [4, 0.4]], h - 1, 9, 0xffd9a8, 0.3);
+  return { spawn: [-2.5, 5.8], look: [10, 1.4, -1.5], walk: 1.6 };
+}
+
+function officeBase(c, o) {
+  const w = o.w || 18, d = o.d || 14, h = o.h || 4.4, g = c.g;
+  shell(c, { w, d, h, floor: o.floor || std({ map: rep(T.carpet, w / 3, d / 3), color: o.carpet || 0x5b6470, roughness: 1 }), wall: o.wall || M.plaster, glass: o.glass || ["front", "left"], ...o.shell });
+  if (o.panels !== false) ceilingPanels(g, w, d, h);
+  lights(g, o.lights || [[-4, -3], [4, -3], [-4, 3], [4, 3]], h - 0.6, o.lightI || 10, 0xfff4e6, 0.35);
+  return { w, d, h, g, rw: wallFrame(g, "right", w, d) };
+}
+function brandSign(rw, title, sub, y = 3.55, color = "#1f2328", x = 0) {
+  put(rw, P(6, 0.75, std({ map: signTex([{ t: title.toUpperCase(), y: 64, f: `800 104px ${FD}`, c: color, spacing: "6px" }], 1024, 128), transparent: true })), x, y, 0.02);
+  if (sub) put(rw, P(6, 0.25, std({ map: signTex([{ t: sub.toUpperCase(), y: 32, f: `500 30px ${FM}`, c: color, spacing: "4px" }], 1024, 64), transparent: true })), x, y - 0.5, 0.02);
+}
+function deskRow(g, xs, z, ry, texA, texB) {
+  for (const x of xs) {
+    const dg = desk(g, x, z, ry);
+    chair(dg, 0, 0.75, 0);
+    monitor(dg, -0.33, 0.76, -0.2, 0, texA);
+    monitor(dg, 0.33, 0.76, -0.2, 0, texB || texA);
+    put(dg, B(0.42, 0.015, 0.14, M.charcoal, 0.005), 0, 0.77, 0.12);
+    if (Math.random() < 0.6) cup(dg, 0.6, 0.76, 0.1);
+  }
+}
+
+function roomFinance(c) {
+  const { g, rw } = officeBase(c, { carpet: 0x3d4a5c });
+  const charts = [screenTex("kecChart"), screenTex("kecLine"), screenTex("kecHeat"), screenTex("kecChart"), screenTex("kecSheet"), screenTex("kecLine")];
+  charts.forEach((t, i) => screen(rw, 1.9, 1.07, t, -2.0 + (i % 3) * 2.0, 2.55 - Math.floor(i / 3) * 1.12, 0.05));
+  const tick = cvt(2048, 64, (q, W, H) => {
+    q.fillStyle = "#050505";
+    q.fillRect(0, 0, W, H);
+    const items = ["KEC ▲ 2.41%", "POWERGRID ▲ 1.20%", "NTPC ▼ 0.62%", "L&T ▲ 0.88%", "TATAPOWER ▲ 1.73%", "BHEL ▼ 1.10%", "NIFTY INFRA ▲ 0.94%", "SENSEX ▲ 0.51%"];
+    q.font = `600 34px ${FM}`;
+    let x = 10;
+    for (const s of items.concat(items)) {
+      q.fillStyle = s.includes("▼") ? "#f87171" : "#34d399";
+      q.fillText(s, x, 44);
+      x += q.measureText(s).width + 60;
+    }
+  }, true);
+  tick.repeat.set(0.5, 1);
+  screen(rw, 6.0, 0.22, tick, 0, 1.25, 0.05, 0, 0.02);
+  c.updates.push((dt) => (tick.offset.x = (tick.offset.x + dt * 0.03) % 1));
+  brandSign(rw, "KEC International", "Finance · May – Jul 2023", 3.85);
+  const a = screenTex("kecChart", 640, 360), b = screenTex("kecSheet", 640, 360);
+  for (const x of [1.5, 4.5]) for (const z of [-4, -2, 0, 2]) {
+    const dg = desk(g, x, z, -Math.PI / 2);
+    chair(dg, 0, 0.75, 0);
+    monitor(dg, -0.33, 0.76, -0.2, 0, (x + z) % 2 ? a : b);
+    monitor(dg, 0.33, 0.76, -0.2, 0, (x + z) % 2 ? b : a);
+    put(dg, B(0.42, 0.015, 0.14, M.charcoal, 0.005), 0, 0.77, 0.12);
+  }
+  for (const [x, z] of [[-8, -6], [8, -6], [-8, 2]]) plant(g, x, z, 1.2);
+  return { spawn: [-2.5, 5.8], look: [9, 1.8, -0.5], walk: 1.6 };
+}
+
+function teeShape() {
+  const s = new THREE.Shape();
+  s.moveTo(-0.16, 0);
+  s.lineTo(0.16, 0);
+  s.lineTo(0.16, 0.42);
+  s.lineTo(0.27, 0.36);
+  s.lineTo(0.33, 0.47);
+  s.lineTo(0.17, 0.6);
+  s.lineTo(0.07, 0.6);
+  s.quadraticCurveTo(0, 0.54, -0.07, 0.6);
+  s.lineTo(-0.17, 0.6);
+  s.lineTo(-0.33, 0.47);
+  s.lineTo(-0.27, 0.36);
+  s.lineTo(-0.16, 0.42);
+  s.closePath();
+  return s;
+}
+function roomSigma(c) {
+  const { g, rw, w, d, h } = officeBase(c, {
+    h: 5,
+    floor: std({ map: rep(T.concrete, 18 / 4, 14 / 4), roughness: 0.35 }),
+    glass: ["front"],
+    shell: { ceil: M.charcoal },
+    panels: false,
+    lights: [[-4, -3], [3, -3], [-4, 2], [3, 2]],
+    lightI: 12,
+  });
+  for (const z of [-5, 0, 5]) rod(g, [-w / 2, h - 0.5, z], [w / 2, h - 0.5, z], 0.25, M.steel, 16);
+  for (const [x, z] of [[-4, -3.5], [0, -3.5], [4, -3.5], [-4, 1.5], [0, 1.5], [4, 1.5]]) pendant(g, x, z, h, 1.5, 0.32, M.charcoal);
+  // mural
+  put(rw, P(10, 1.6, std({ map: signTex([{ t: "SIGMA", y: 120, f: `800 220px ${FD}`, c: "#f05a28", spacing: "18px" }, { t: "MERCH FOR STUDENTS, COLLEGES AND CLUBS", y: 222, f: `600 34px ${FM}`, c: "#2b2b2b", spacing: "6px" }], 2048, 256), transparent: true })), -1.5, 3.95, 0.02);
+  put(rw, P(5, 0.9, std({ map: signTex([{ t: "₹50L+ IN 18 MONTHS · 3,000+ STUDENTS", y: 64, f: `600 40px ${FM}`, c: "#fff" }], 1024, 128, { bg: "#1f2328" }) })), -1.5, 2.2, 0.02);
+  // tee display wall
+  const tee = new THREE.ExtrudeGeometry(teeShape(), { depth: 0.015, bevelEnabled: false });
+  const teeCols = [0xf05a28, 0x1f2328, 0xffffff, 0x2f5a8a, 0x3f6b4f, 0xe8c547];
+  for (let i = 0; i < 12; i++) put(rw, mesh(tee, std({ color: teeCols[i % 6], roughness: 0.9 })), -6.8 + (i % 6) * 0.8 + 6.5, 0.45 + Math.floor(i / 6) * 0.75, 0.04);
+  // racks
+  for (const [x, z] of [[-2, -3.5], [-2, 0]]) {
+    const r = grp(g, x, 0, z);
+    for (const sx of [-1, 1]) put(r, B(0.04, 1.6, 0.04, M.steel), sx * 0.9, 0.8, 0);
+    rod(r, [-0.9, 1.58, 0], [0.9, 1.58, 0], 0.015, M.steel);
+    for (let k = 0; k < 14; k++) put(r, mesh(tee, std({ color: pick(teeCols), roughness: 0.9 })), -0.8 + k * 0.12, 0.95, 0, Math.PI / 2);
+    blob(r, 2.2, 0.8);
+  }
+  // folding table with stacks
+  const t = desk(g, 2.6, -1.5, 0, { w: 2.4, d: 1, top: M.woodLight });
+  for (let k = 0; k < 6; k++) for (let j = 0; j < (3 + (k % 3)); j++) put(t, B(0.34, 0.035, 0.28, std({ color: teeCols[k], roughness: 0.95 })), -0.95 + k * 0.38, 0.78 + j * 0.036, 0);
+  // boxes on pallets
+  const box = std({ map: T.cardboard, roughness: 0.9 });
+  for (const [x, z] of [[3, -5.4], [5, -5.4], [7, -5.4]]) {
+    const p = grp(g, x, 0, z, rnd(-0.1, 0.1));
+    put(p, B(1.2, 0.14, 1.0, M.woodLight), 0, 0.07, 0);
+    for (let k = 0; k < 6; k++) put(p, B(0.55, 0.42, 0.45, box), (k % 2) * 0.58 - 0.29, 0.35 + Math.floor(k / 2) * 0.43, rnd(-0.05, 0.05), rnd(-0.06, 0.06));
+    blob(p, 1.6, 1.4);
+  }
+  const ps = desk(g, 5.5, 1.8, -0.3, { w: 1.8, d: 0.8, top: M.woodLight });
+  laptop(ps, 0.2, 0.76, 0, 0, screenTex("orders", 1024, 640));
+  put(ps, mesh(new THREE.TorusGeometry(0.07, 0.03, 8, 20), M.brushed), -0.6, 0.79, 0.1, 0, Math.PI / 2);
+  return { spawn: [-3, 5.8], look: [9, 2, -1], walk: 1.6 };
+}
+
+function roomApac(c) {
+  const { g, rw } = officeBase(c, { carpet: 0x8a8070 });
+  // glass meeting room
+  const mr = grp(g, 4.5, 0, -1);
+  const W = 8, D = 6, H = 4.4;
+  for (const [x, z, ry, len] of [[0, -D / 2, 0, W], [-W / 2, 0, Math.PI / 2, D], [0, D / 2, 0, W]]) {
+    const f = grp(mr, x, 0, z, ry);
+    put(f, P(len, H, M.glassTint), 0, H / 2, 0);
+    put(f, B(len, 0.05, 0.06, M.steelDark), 0, H - 0.03, 0);
+    put(f, P(len, 0.12, std({ color: 0xffffff, transparent: true, opacity: 0.5 })), 0, 1.3, 0.005);
+  }
+  const tb = grp(mr, 0, 0, 0);
+  put(tb, B(4.4, 0.06, 1.5, M.wood, 0.03), 0, 0.75, 0);
+  put(tb, B(2.6, 0.7, 0.5, M.black), 0, 0.36, 0);
+  blob(tb, 5, 2.4);
+  for (const sx of [-1.5, -0.5, 0.5, 1.5]) {
+    chair(tb, sx, -1.05, Math.PI);
+    chair(tb, sx, 1.05, 0);
+  }
+  laptop(tb, -1.2, 0.78, 0.3, Math.PI * 0.95, screenTex("segments", 640, 400));
+  laptop(tb, 0.8, 0.78, -0.35, 0.05, null);
+  for (let k = 0; k < 5; k++) cup(tb, rnd(-1.8, 1.8), 0.78, rnd(-0.5, 0.5));
+  put(tb, B(0.3, 0.01, 0.4, M.white), 0.2, 0.785, 0.2, 0.3);
+  screen(rw, 3.6, 2.0, screenTex("segments"), 1.5 - 1, 2.0, 0.05);
+  // research wall with sticky notes
+  put(rw, B(4, 2.2, 0.03, M.white), -3.6, 1.9, 0.03);
+  const notes = ["Who buys first?", "Price per segment", "Agent vs online", "Claims pain", "Renewal timing", "Family cover", "SME bundles", "Referral loops", "Trust signals", "Turnaround −20%"];
+  const ncol = ["#fde68a", "#fbcfe8", "#bfdbfe", "#bbf7d0"];
+  notes.forEach((s, i) => {
+    const t = cvt(256, 256, (q, W2, H2) => {
+      q.fillStyle = pick(ncol);
+      q.fillRect(0, 0, W2, H2);
+      q.font = `700 44px ${FH}`;
+      q.fillStyle = "#333";
+      wrapText(q, s, 20, 70, W2 - 40, 50);
+    });
+    put(rw, P(0.42, 0.42, std({ map: t, roughness: 0.9 })), -5.2 + (i % 5) * 0.75, 2.5 - Math.floor(i / 5) * 0.75, 0.05 + i * 0.0005, 0, 0, rnd(-0.08, 0.08));
+  });
+  brandSign(rw, "APAC Insurance", "Founder's office · Sep – Nov 2024", 3.95, "#1f2328", -1);
+  plant(g, -8, -6, 1.3);
+  plant(g, 8.3, 5.5, 1.2);
+  const dk = desk(g, -5, -3.5, 0);
+  chair(dk, 0, 0.75, 0);
+  laptop(dk, 0, 0.76, -0.1, 0, null);
+  return { spawn: [-3, 5.8], look: [8, 1.3, -1], walk: 1.6 };
+}
+
+function roomEpik(c) {
+  const { g, rw } = officeBase(c, { floor: std({ map: rep(T.wood, 26 / 4, 18 / 4), roughness: 0.45 }), glass: ["front"] });
+  put(rw, B(8, 2.6, 0.04, M.white, 0.01), -1, 1.9, 0.03);
+  const cols = ["BACKLOG", "IN PROGRESS", "REVIEW", "SHIPPED"];
+  put(rw, P(8, 2.6, std({ transparent: true, map: cvt(2048, 666, (q, W, H) => {
+    cols.forEach((s, i) => {
+      txt(q, s, 40 + i * 512, 50, `600 40px ${FM}`, "#334155");
+      if (i) {
+        q.fillStyle = "#cbd5e1";
+        q.fillRect(i * 512, 20, 3, H - 40);
+      }
+    });
+  }) })), -1, 1.9, 0.055);
+  const tasks = [["RCA: approval delays", 2], ["Spec → ticket links", 3], ["Weekly on-time report", 3], ["Ops handoff checklist", 1], ["Automate status pings", 3], ["Design QA rota", 2], ["Vendor SLA tracker", 0], ["Sprint 15 stories", 0], ["Dependency map", 1], ["Release notes", 3], ["Bug triage flow", 2], ["Capacity plan", 0]];
+  const ncol = ["#fde68a", "#bfdbfe", "#fbcfe8", "#bbf7d0"];
+  const count = [0, 0, 0, 0];
+  for (const [s, col] of tasks) {
+    const k = count[col]++;
+    const t = cvt(256, 256, (q, W, H) => {
+      q.fillStyle = ncol[col];
+      q.fillRect(0, 0, W, H);
+      q.font = `700 46px ${FH}`;
+      q.fillStyle = "#2b2b2b";
+      wrapText(q, s, 18, 70, W - 36, 52);
+    });
+    put(rw, P(0.5, 0.5, std({ map: t, roughness: 0.9 })), -4.6 + col * 2 + (k % 2) * 0.62, 2.4 - Math.floor(k / 2) * 0.62, 0.06 + k * 0.001, 0, 0, rnd(-0.07, 0.07));
+  }
+  brandSign(rw, "EPIK", "Product · Jan – Jul 2026", 3.85, "#1f2328", -1);
+  const st = screenTex("stories", 640, 400);
+  deskRow(g, [-6, -3.5], -3.5, 0, st);
+  deskRow(g, [-6, -3.5], 0, 0, st);
+  for (const [x, z, col] of [[3, -4.6, 0xf97316], [4.3, -3.8, 0x2f5a8a], [2.2, -3.2, 0x3f6b4f]]) {
+    const bb = put(g, S(0.55, std({ color: col, roughness: 0.9 }), 20, 14), x, 0.32, z);
+    bb.scale.set(1, 0.6, 1);
+    blob(g, 1.3, 1.3, x, z);
+  }
+  const tv = grp(g, 0.5, 0, -5.6, 0.2);
+  put(tv, B(0.06, 1.5, 0.06, M.steelDark), 0, 0.75, 0);
+  put(tv, B(0.8, 0.04, 0.5, M.steelDark), 0, 0.02, 0);
+  screen(tv, 1.6, 0.9, cvt(1280, 720, (q, W, H) => {
+    uiFrame(q, W, H, "Delivery dashboard", "#a78bfa");
+    txt(q, "95%", 60, 300, `800 220px ${FD}`, "#fff");
+    txt(q, "on-time delivery", 70, 360, `500 36px ${FB}`, "#c4b5fd");
+    txt(q, "−25%", 700, 300, `800 160px ${FD}`, "#34d399");
+    txt(q, "workflow delays", 710, 360, `500 36px ${FB}`, "#a7f3d0");
+  }), 0, 1.75, 0.05);
+  plant(g, 8, -6, 1.4);
+  plant(g, -8, -6, 1.4);
+  return { spawn: [-2.5, 5.8], look: [9, 1.8, -1], walk: 1.6 };
+}
+
+function flagTex(code) {
+  return cvt(240, 160, (q, W, H) => {
+    const stripes = (cols, vertical) => cols.forEach((c, i) => {
+      q.fillStyle = c;
+      if (vertical) q.fillRect((i * W) / cols.length, 0, W / cols.length + 1, H);
+      else q.fillRect(0, (i * H) / cols.length, W, H / cols.length + 1);
+    });
+    if (code === "DE") stripes(["#000", "#dd0000", "#ffce00"]);
+    else if (code === "IE") stripes(["#169b62", "#fff", "#ff883e"], true);
+    else if (code === "CA") {
+      stripes(["#d52b1e", "#fff", "#fff", "#d52b1e"], true);
+      q.fillStyle = "#d52b1e";
+      q.beginPath();
+      q.moveTo(120, 40);
+      q.lineTo(140, 80);
+      q.lineTo(132, 120);
+      q.lineTo(108, 120);
+      q.lineTo(100, 80);
+      q.fill();
+    } else if (code === "US") {
+      for (let i = 0; i < 13; i++) {
+        q.fillStyle = i % 2 ? "#fff" : "#b22234";
+        q.fillRect(0, (i * H) / 13, W, H / 13 + 1);
+      }
+      q.fillStyle = "#3c3b6e";
+      q.fillRect(0, 0, W * 0.42, H * 0.54);
+    } else if (code === "UK") {
+      q.fillStyle = "#012169";
+      q.fillRect(0, 0, W, H);
+      q.strokeStyle = "#fff";
+      q.lineWidth = 28;
+      q.beginPath();
+      q.moveTo(0, 0);
+      q.lineTo(W, H);
+      q.moveTo(W, 0);
+      q.lineTo(0, H);
+      q.stroke();
+      q.strokeStyle = "#c8102e";
+      q.lineWidth = 10;
+      q.stroke();
+      q.fillStyle = "#fff";
+      q.fillRect(W / 2 - 22, 0, 44, H);
+      q.fillRect(0, H / 2 - 22, W, 44);
+      q.fillStyle = "#c8102e";
+      q.fillRect(W / 2 - 13, 0, 26, H);
+      q.fillRect(0, H / 2 - 13, W, 26);
+    } else if (code === "AU") {
+      q.fillStyle = "#012169";
+      q.fillRect(0, 0, W, H);
+      q.fillStyle = "#fff";
+      for (const [x, y, r] of [[180, 40, 8], [160, 90, 8], [200, 80, 6], [180, 130, 8], [60, 120, 12]]) {
+        q.beginPath();
+        q.arc(x, y, r, 0, 7);
+        q.fill();
+      }
+    }
+  });
+}
+function roomStudyAbroad(c) {
+  const { g, rw } = officeBase(c, { carpet: 0x4b5a6b });
+  const board = cvt(1800, 660, (q, W, H) => {
+    q.fillStyle = "#0b0b0b";
+    q.fillRect(0, 0, W, H);
+    txt(q, "DEPARTURES · STUDY ABROAD", 40, 64, `600 46px ${FM}`, "#ffd23f");
+    const rows = [["LONDON", "UK", "MSC FINANCE", "OPEN"], ["TORONTO", "CA", "MBA", "OPEN"], ["MELBOURNE", "AU", "MS DATA SCI", "CLOSING"], ["MUNICH", "DE", "MS MECH ENG", "OPEN"], ["DUBLIN", "IE", "MSC COMP SCI", "OPEN"], ["BOSTON", "US", "MS ANALYTICS", "WAITLIST"]];
+    const cx = [40, 640, 820, 1420];
+    rows.forEach((r, i) => {
+      const y = 140 + i * 84;
+      r.forEach((s, k) => {
+        for (let j = 0; j < s.length; j++) {
+          const x = cx[k] + j * 40;
+          q.fillStyle = "#1c1c1c";
+          q.fillRect(x, y - 34, 36, 64);
+          q.fillStyle = "#000";
+          q.fillRect(x, y - 3, 36, 2);
+          txt(q, s[j], x + 18, y, `600 40px ${FM}`, k === 3 && s === "CLOSING" ? "#ff8c42" : "#f2f2f2", "center", "middle");
+        }
+      });
+    });
+  });
+  screen(rw, 6, 2.2, board, -1.2, 2.5, 0.05, 0, 0.05);
+  ["UK", "US", "CA", "AU", "DE", "IE"].forEach((code, i) => {
+    const fg = grp(rw, -3.7 + i * 1.0, 0, 0.05);
+    put(fg, P(0.6, 0.4, std({ map: flagTex(code), roughness: 0.9, side: THREE.DoubleSide })), 0, 1.0, 0.02);
+  });
+  brandSign(rw, "alokbansal.com", "Product · 2026 – now", 4.05, "#1f2328", -1.2);
+  const lp = screenTex("landing", 640, 400);
+  deskRow(g, [-6.5, -4], -3.5, 0, lp);
+  deskRow(g, [-6.5, -4], 0, 0, lp);
+  // globe
+  const gl = grp(g, 3.2, 0, -3.5);
+  put(gl, C(0.25, 0.3, 0.05, M.woodDark, 20), 0, 0.025, 0);
+  put(gl, C(0.02, 0.02, 0.9, M.brass, 8), 0, 0.5, 0);
+  const globe = put(gl, S(0.42, std({ roughness: 0.6, map: cvt(1024, 512, (q, W, H) => {
+    q.fillStyle = "#2a5f8a";
+    q.fillRect(0, 0, W, H);
+    q.fillStyle = "#c9b27a";
+    for (const [x, y, rx, ry] of [[220, 170, 120, 90], [260, 330, 60, 110], [520, 150, 90, 60], [560, 300, 70, 110], [760, 180, 170, 90], [860, 360, 60, 40]]) {
+      q.beginPath();
+      q.ellipse(x, y, rx, ry, rnd(-0.5, 0.5), 0, 7);
+      q.fill();
+    }
+    q.strokeStyle = "rgba(255,255,255,0.25)";
+    for (let x = 0; x < W; x += 64) q.strokeRect(x, 0, 0, H);
+    for (let y = 0; y < H; y += 64) q.strokeRect(0, y, W, 0);
+  }) }), 40, 28), 0, 1.25, 0);
+  put(gl, mesh(new THREE.TorusGeometry(0.46, 0.012, 6, 48, Math.PI), M.brass), 0, 1.25, 0, Math.PI / 2, 0, 0.4);
+  c.updates.push((dt) => (globe.rotation.y += dt * 0.25));
+  put(rw, P(3, 0.6, std({ map: signTex([{ t: "2× INQUIRIES · #1 ON GOOGLE · −90% LOAD", y: 64, f: `600 38px ${FM}`, c: "#fff" }], 1024, 128, { bg: "#0b3b5c" }) })), -1.2, 0.95, 0.04);
+  plant(g, 8, -6, 1.3);
+  return { spawn: [-2.5, 5.8], look: [9, 2, 0.5], walk: 1.6 };
+}
+
+// projects: a gallery floor with an LED wall and one real object in the middle
+const PROJECT = {
+  marketplace: { screen: "marketplace", kind: "Product · 2026" },
+  nivesh: { screen: "nivesh", kind: "Build · 2026" },
+  einvoice: { screen: "einvoice", kind: "Strategy · 2026" },
+  tradepips: { screen: "tradepips", kind: "Content · 2026" },
+  hackerclub: { screen: "hackerclub", kind: "Build · 2026" },
+  dataworld: { screen: "dataworld", kind: "Build · 2026" },
+  snapvanish: { screen: "snapvanish", kind: "Build · 2026" },
+};
+function roomProject(c) {
+  const id = c.f.id;
+  const pj = PROJECT[id] || PROJECT.marketplace;
+  const w = 18, d = 14, h = 4.6, g = c.g;
+  shell(c, { w, d, h, floor: std({ map: rep(T.concrete, w / 4, d / 4), roughness: 0.22 }), wall: M.white, glass: ["front"], ceil: M.charcoal, signColor: "#9aa3ad" });
+  // track lights
+  for (const z of [-4, 0, 4]) {
+    put(g, B(w - 2, 0.05, 0.06, M.black), 0, h - 0.4, z);
+    for (let x = -7.5; x <= 7.5; x += 3) {
+      const s = put(g, C(0.06, 0.08, 0.2, M.black, 12), x, h - 0.55, z, 0, 0.6);
+      put(s, mesh(new THREE.CircleGeometry(0.055, 12), M.bulb), 0, -0.101, 0, 0, Math.PI / 2);
+    }
+  }
+  lights(g, [[-4, -3], [4, -3], [4, 3], [-4, 3]], h - 0.8, 9, 0xfff4e6, 0.35);
+  const rw = wallFrame(g, "right", w, d);
+  screen(rw, 6.4, 3.6, screenTex(pj.screen), -1.6, 2.35, 0.08, 0, 0.06);
+  const glow = new THREE.PointLight(0xa8c8ff, 6, 8, 2);
+  glow.position.set(w / 2 - 1.5, 2.3, -1.6 * -1);
+  g.add(glow);
+  // wall text
+  put(rw, P(2.6, 2.6, std({ transparent: true, map: cvt(640, 640, (q, W, H) => {
+    txt(q, "FLOOR " + c.f.level, 20, 110, `800 120px ${FD}`, "#c9ced4");
+    q.font = `800 74px ${FD}`;
+    q.fillStyle = "#16191d";
+    const end = wrapText(q, c.f.title.toUpperCase(), 20, 240, W - 40, 76);
+    txt(q, pj.kind.toUpperCase(), 22, end + 70, `500 30px ${FM}`, "#6b7480");
+  }) })), 3.9, 2.2, 0.02);
+  // the centrepiece
+  const ped = grp(g, 3.5, 0, -1.5);
+  const plinth = (wd = 1, ht = 1, dp = 1) => {
+    put(ped, B(wd, ht, dp, M.white, 0.02), 0, ht / 2, 0);
+    blob(ped, wd + 0.8, dp + 0.8);
+  };
+  if (id === "nivesh") {
+    plinth(0.8, 1.05, 0.8);
+    const ph = grp(ped, 0, 1.05, 0, -0.5);
+    ph.rotation.x = -0.35;
+    put(ph, B(0.36, 0.74, 0.04, M.black, 0.04), 0, 0.37, 0);
+    put(ph, P(0.33, 0.7, basic(cvt(330, 700, (q, W, H) => {
+      q.fillStyle = "#0b1210";
+      q.fillRect(0, 0, W, H);
+      txt(q, "Nivesh AI", 24, 60, `700 30px ${FB}`, "#34d399");
+      txt(q, "₹4,82,310", 24, 140, `800 54px ${FD}`, "#fff");
+      lineChart(q, 20, 180, W - 40, 160, "#34d399", 40, 0.9);
+      rr(q, 20, 380, W - 40, 90, 14, "#16241f");
+      q.font = `400 20px ${FB}`;
+      q.fillStyle = "#cfe9dd";
+      wrapText(q, "SIP badhani chahiye?", 36, 425, W - 80, 26);
+      rr(q, 40, 490, W - 60, 120, 14, "#1f7a57");
+      q.fillStyle = "#fff";
+      wrapText(q, "Haan, ₹2,000 aur. Equity 70% rakhein.", 56, 530, W - 100, 26);
+    }))), 0, 0.37, 0.021);
+  } else if (id === "dataworld") {
+    plinth(1.8, 0.9, 1.8);
+    put(ped, B(1.7, 0.02, 1.7, std({ color: 0x0b2a3a, emissive: 0x0e7490, emissiveIntensity: 0.6 })), 0, 0.91, 0);
+    const bars = grp(ped, 0, 0.92, 0);
+    const holo = std({ color: 0x22d3ee, emissive: 0x22d3ee, emissiveIntensity: 1.2, transparent: true, opacity: 0.75 });
+    for (let x = -3; x <= 3; x++)
+      for (let z = -3; z <= 3; z++) {
+        const hh = rnd(0.05, 0.6);
+        put(bars, B(0.15, hh, 0.15, Math.random() < 0.08 ? M.redLed : holo), x * 0.22, hh / 2, z * 0.22);
+      }
+    c.updates.push((dt) => (bars.rotation.y += dt * 0.2));
+  } else if (id === "snapvanish") {
+    plinth(1.2, 0.95, 0.9);
+    laptop(ped, 0, 0.95, 0, -0.4, screenTex("snapvanish", 640, 400));
+    const n = 600;
+    const pos = new Float32Array(n * 3);
+    const seed = [];
+    for (let i = 0; i < n; i++) seed.push([rnd(-0.15, 0.15), rnd(0, 0.3), rnd(-0.1, 0.1), rnd(0.2, 1)]);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    const dust = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xd9b38c, size: 0.02, transparent: true, opacity: 0.85 }));
+    put(ped, dust, 0, 1.1, -0.1);
+    let t = 0;
+    c.updates.push((dt) => {
+      t += dt;
+      for (let i = 0; i < n; i++) {
+        const [x, y, z, sp] = seed[i];
+        const k = ((t * sp * 0.25 + i / n) % 1);
+        pos[i * 3] = x + k * 0.9 * sp;
+        pos[i * 3 + 1] = y + k * 0.5;
+        pos[i * 3 + 2] = z - k * 0.3;
+      }
+      geo.attributes.position.needsUpdate = true;
+    });
+  } else if (id === "hackerclub") {
+    const dk = desk(ped, 0, 0, 0, { w: 1.8, d: 0.8, top: M.black });
+    chair(dk, 0, 0.75, 0, M.fabricBlue);
+    monitor(dk, -0.35, 0.76, -0.2, 0.15, screenTex("hackerclub", 640, 360));
+    monitor(dk, 0.35, 0.76, -0.2, -0.15, screenTex("hackerclub", 640, 360));
+    put(dk, B(0.44, 0.02, 0.14, M.charcoal), 0, 0.77, 0.12);
+    put(rw, P(3.6, 0.7, basic(signTex([{ t: "HACKER CLUB", y: 64, f: `800 110px ${FD}`, c: "#7ee787", glow: "#3fb950", blur: 30, spacing: "8px" }], 1024, 128), { transparent: true })), -1.6, 4.35, 0.03);
+  } else if (id === "einvoice") {
+    put(ped, B(2.4, 0.05, 1.2, M.wood, 0.02), 0, 0.75, 0);
+    put(ped, B(1.6, 0.7, 0.5, M.black), 0, 0.36, 0);
+    blob(ped, 3, 2);
+    for (let k = 0; k < 6; k++) put(ped, B(0.21, 0.004, 0.3, M.white), rnd(-1, 1), 0.78 + k * 0.002, rnd(-0.4, 0.4), rnd(-0.5, 0.5));
+    for (const sx of [-0.7, 0.7]) for (const sz of [-1, 1]) chair(ped, sx, sz * 0.85, sz > 0 ? 0 : Math.PI);
+    laptop(ped, 0.3, 0.775, 0.1, 0.2, screenTex("einvoice", 640, 400));
+  } else if (id === "tradepips") {
+    desk(ped, 0, 0, 0, { w: 1.4, d: 0.7, top: M.woodLight });
+    chair(ped, 0, 0.7, 0);
+    laptop(ped, 0, 0.76, -0.05, 0, screenTex("tradepips", 640, 400));
+    cup(ped, 0.5, 0.76, 0.1);
+  } else {
+    plinth(0.9, 1.0, 0.7);
+    const tab = grp(ped, 0, 1.0, 0, -0.4);
+    tab.rotation.x = -0.6;
+    put(tab, B(0.62, 0.44, 0.03, M.black, 0.03), 0, 0.22, 0);
+    put(tab, P(0.58, 0.4, basic(screenTex("marketplace", 640, 440))), 0, 0.22, 0.016);
+  }
+  bench(g, -3.5, -2.5, Math.PI / 2);
+  plant(g, -8, -5.8, 1.3, true);
+  return { spawn: [-2.5, 5.6], look: [9, 2, 0.3], walk: 1.4 };
+}
+function bench(p, x, z, ry = 0, w = 2.4) {
+  const g = grp(p, x, 0, z, ry);
+  put(g, B(w, 0.08, 0.5, M.woodLight, 0.02), 0, 0.44, 0);
+  for (const sx of [-1, 1]) put(g, B(0.06, 0.42, 0.44, M.steelDark), sx * (w / 2 - 0.2), 0.21, 0);
+  blob(g, w + 0.4, 1);
+}
+
+function roomMechanical(c) {
+  const w = 24, d = 16, h = 5.5, g = c.g;
+  shell(c, { w, d, h, floor: std({ map: rep(T.concrete, w / 4, d / 4), roughness: 0.6 }), wall: std({ color: 0x8b9096, roughness: 0.9 }), glass: ["front"], louvers: true, ceil: M.charcoal, headMat: M.steelDark, signColor: "#f2c230" });
+  // hazard stripes
+  put(g, P(w - 2, 0.5, std({ map: cvt(512, 32, (q, W, H) => {
+    for (let x = -40; x < W + 40; x += 40) {
+      q.fillStyle = (x / 40) % 2 ? "#111" : "#f2c230";
+      q.beginPath();
+      q.moveTo(x, 0);
+      q.lineTo(x + 40, 0);
+      q.lineTo(x + 20, H);
+      q.lineTo(x - 20, H);
+      q.fill();
+    }
+  }, true), roughness: 0.7 })), 0, 0.01, 0.6, 0, -Math.PI / 2).material.map.repeat.set(10, 1);
+  // ceiling pipes
+  const pipeCols = [0xb8322a, 0x2f6fb8, 0x3f8b4f, 0xc9a35f];
+  pipeCols.forEach((col, i) => rod(g, [-w / 2, h - 0.5 - i * 0.05, -6 + i * 1.1], [w / 2, h - 0.5 - i * 0.05, -6 + i * 1.1], 0.16, std({ color: col, roughness: 0.45, metalness: 0.3 }), 16));
+  for (let i = 0; i < 3; i++) rod(g, [-w / 2, h - 1.1, 1 + i * 0.7], [w / 2, h - 1.1, 1 + i * 0.7], 0.1, M.steel, 12);
+  const steps = [["01", "UNDERSTAND", "Users, stakeholders, numbers"], ["02", "DECIDE", "A few bets, one metric each"], ["03", "SHIP", "Prototype, test, build"], ["04", "MEASURE", "Read the numbers, iterate"]];
+  steps.forEach(([n, title, sub], i) => {
+    const x = -8.1 + i * 5.4;
+    const m = grp(g, x, 0, -2.5);
+    put(m, B(0.6, 0.2, 0.4, M.black), 0, 0.1, 0);
+    put(m, B(3.2, 2.5, 1.8, M.machine, 0.12), 0, 1.45, 0);
+    put(m, B(2.8, 0.05, 1.6, M.steelDark), 0, 2.72, 0);
+    put(m, P(2.6, 1.2, std({ roughness: 0.6, map: cvt(1024, 470, (q, W, H) => {
+      q.fillStyle = "#e9e5d8";
+      q.fillRect(0, 0, W, H);
+      q.fillStyle = "#1b1d20";
+      q.fillRect(0, 0, W, 90);
+      txt(q, "STEP " + n, 30, 46, `600 46px ${FM}`, "#f2c230", "left", "middle");
+      txt(q, title, 30, 220, `800 150px ${FD}`, "#1b1d20");
+      txt(q, sub.toUpperCase(), 32, 330, `500 38px ${FM}`, "#4a4f55");
+      q.strokeStyle = "#1b1d20";
+      q.lineWidth = 6;
+      q.strokeRect(3, 3, W - 6, H - 6);
+    }) })), 0, 1.6, 0.91);
+    // gauge and status light
+    put(m, C(0.2, 0.2, 0.06, M.steel, 24), 1.05, 2.5, 0.92, 0, Math.PI / 2);
+    const needle = put(m, B(0.01, 0.15, 0.01, M.red), 1.05, 2.5, 0.96);
+    needle.geometry.translate(0, 0.07, 0);
+    c.updates.push((dt, t) => (needle.rotation.z = Math.sin(t * 0.7 + i) * 0.9));
+    put(m, S(0.06, i === 3 ? M.greenLed : M.greenLed, 10, 8), -1.2, 2.5, 0.92);
+    rod(m, [1, 2.9, 0], [1, h - 0.5, 0], 0.12, std({ color: pipeCols[i], roughness: 0.45 }), 12);
+    if (i < 3) rod(g, [x + 1.6, 1.0, -2.5], [x + 3.8, 1.0, -2.5], 0.09, M.steel, 12);
+    blob(m, 4, 2.6);
+  });
+  railing(g, -11, 11, 0.2, 1.05, M.yellow, 2);
+  // wall fans
+  const rw = wallFrame(g, "right", w, d);
+  for (const x of [-3, 1]) {
+    put(rw, C(0.75, 0.75, 0.3, M.steelDark, 32, true), x, 3.2, 0.15, 0, Math.PI / 2);
+    const fan = grp(rw, x, 3.2, 0.2);
+    for (let k = 0; k < 5; k++) put(fan, B(0.18, 0.66, 0.02, M.steel), 0, 0, 0, 0, 0.3, (k / 5) * Math.PI * 2).geometry.translate(0, 0.33, 0);
+    c.updates.push((dt) => (fan.rotation.z += dt * 6));
+  }
+  put(rw, P(3.4, 1.0, std({ map: signTex([{ t: "MECHANICAL FLOOR 14", y: 50, f: `800 72px ${FD}`, c: "#111" }, { t: "HOW THE WORK GETS DONE", y: 104, f: `600 30px ${FM}`, c: "#111" }], 1024, 150, { bg: "#f2c230" }) })), -3, 1.6, 0.02);
+  for (let x = -10; x <= 10; x += 5) put(g, B(1.4, 0.06, 0.16, M.coolPanel), x, h - 0.15, 3);
+  lights(g, [[-6, 2], [6, 2], [0, -5]], h - 0.6, 18, 0xe8f2ff, 0.4);
+  return { spawn: [0, 6], look: [0, 1.6, -2.5], walk: 1.8, hotspot: [2.7, 3.2, -1.6] };
+}
+
+function roomSuites(c) {
+  const { g } = officeBase(c, { w: 26, d: 18, carpet: 0x6b6458, glass: ["front"], lights: [[0, -4], [0, 2], [-6, 0], [6, 0]] });
+  const suites = [["Product strategy", "Discovery · Roadmaps · User stories", -1, -4.5], ["Founder's office", "Research · GTM · Strategy docs", -1, 0.8], ["MVPs and prototypes", "Full stack · PWA · Claude", 1, -4.5], ["Growth and SEO", "SEO · Funnels · Speed", 1, 0.8]];
+  for (const [title, tags, side, z] of suites) {
+    const s = grp(g, side * 9.75, 0, z, side > 0 ? -Math.PI / 2 : Math.PI / 2);
+    // local +z faces the corridor; the suite spans x -2.6..2.6 and z -6.5..0
+    put(s, P(4.4, 4.4, M.glassTint), 0.5, 2.2, 0);
+    put(s, B(0.08, 4.4, 0.08, M.steelDark), -1.75, 2.2, 0);
+    put(s, B(0.08, 4.4, 0.08, M.steelDark), 2.6, 2.2, 0);
+    put(s, B(0.85, 2.3, 0.04, M.glassTint), -2.2, 1.15, 0.02);
+    put(s, B(0.03, 0.5, 0.03, M.brass), -1.9, 1.1, 0.06);
+    put(s, B(0.12, 4.4, 6.5, M.plaster), 2.62, 2.2, -3.25);
+    put(s, B(0.12, 4.4, 6.5, M.plaster), -2.62, 2.2, -3.25);
+    put(s, P(3.6, 0.5, std({ transparent: true, map: signTex([{ t: title.toUpperCase(), y: 64, f: `800 86px ${FD}`, c: "#1f2328" }], 1024, 128) })), 0.4, 1.55, 0.012);
+    put(s, P(3.6, 0.2, std({ transparent: true, map: signTex([{ t: tags.toUpperCase(), y: 32, f: `500 28px ${FM}`, c: "#4a4f55" }], 1024, 64) })), 0.4, 1.18, 0.012);
+    put(s, P(4.4, 0.08, std({ color: 0xffffff, transparent: true, opacity: 0.6 })), 0.5, 1.75, 0.006);
+    const dk = desk(s, 0.4, -3.6, Math.PI, { w: 1.8, d: 0.8, top: M.wood });
+    chair(dk, 0, 0.75, 0, M.leather);
+    laptop(dk, 0, 0.76, -0.1, 0, null);
+    chair(s, 0.0, -2.2, Math.PI * 0.95, M.fabricWarm);
+    plant(s, 1.9, -5.8, 1.1);
+  }
+  sofa(g, 0, -6.4, 0, 2.6, M.fabricBlue);
+  lowTable(g, 0, -5.2, 1.2, 0.6, M.woodLight);
+  plant(g, -3, -7.8, 1.3);
+  plant(g, 3, -7.8, 1.3);
+  const bw = wallFrame(g, "back", 26, 18);
+  put(bw, P(5, 0.5, std({ transparent: true, map: signTex([{ t: "SUITES · FREELANCE WORK", y: 64, f: `800 90px ${FD}`, c: "#1f2328", spacing: "6px" }], 1024, 128) })), 0, 3.85, 0.02);
+  return { spawn: [0, 7.4], look: [-7, 1.6, -2], walk: 3.2, hotspot: [-6.5, 2.6, -2] };
+}
+
+function roomDeck(c) {
+  const w = 30, d = 16, h = 4.2, g = c.g;
+  shell(c, { w, d, h, floor: std({ map: rep(T.marble, w / 3, d / 3), color: 0x555049, roughness: 0.2 }), wall: M.charcoal, glass: ["front", "left", "right"], ceil: M.black, headMat: M.black, signColor: "#e3b96c" });
+  downlights(g, w, d, h, 3, M.bulb);
+  railing(g, -14.4, 14.4, -7.4, 1.0, M.brass, 2.4);
+  for (const x of [-8, 0, 8]) binoculars(g, x, -6.6, 0);
+  bench(g, -4, 0, 0, 3.2);
+  bench(g, 4, 0, 0, 3.2);
+  // lightbox pillars with the numbers
+  const stats = [["₹50L+", "Revenue in 18 months", "as SIGMA cofounder"], ["#1", "On Google search", "after technical SEO"], ["2×", "Inquiry submissions", "from a new landing flow"]];
+  stats.forEach(([v, a, b], i) => {
+    const [x, z, ry] = [[-10.5, -2, 0.5], [-6, -2.8, 0.25], [10.5, -2, -0.5]][i];
+    const p = grp(g, x, 0, z, ry);
+    put(p, B(1.6, 2.4, 0.3, M.black, 0.03), 0, 1.2, 0);
+    put(p, P(1.4, 2.0, basic(cvt(420, 600, (q, W, H) => {
+      q.fillStyle = "#14161a";
+      q.fillRect(0, 0, W, H);
+      txt(q, v, 30, 230, `800 190px ${FD}`, "#e3b96c");
+      txt(q, a, 32, 330, `600 30px ${FB}`, "#f3f4f6");
+      txt(q, b, 32, 372, `400 26px ${FB}`, "#9ca3af");
+      txt(q, "AT THE TOP · FLOOR 16", 32, H - 40, `500 20px ${FM}`, "#6b7280");
+    }))), 0, 1.25, 0.16);
+    blob(p, 2.2, 1);
+  });
+  const bw = wallFrame(g, "back", w, d);
+  put(bw, P(8, 1.3, basic(signTex([{ t: "AT THE TOP", y: 80, f: `800 140px ${FD}`, c: "#f3dcb0", glow: "#e3a85a", blur: 30, spacing: "12px" }, { t: "FLOOR 16 · 465 M ABOVE GROUND", y: 190, f: `500 40px ${FM}`, c: "#c9b28a", spacing: "6px" }], 2048, 256), { transparent: true })), 0, 3.4, 0.03);
+  put(bw, P(9, 0.9, basic(cvt(2048, 200, (q, W, H) => {
+    const skills = ["Product strategy", "User stories", "Roadmaps", "Go-to-market", "SQL", "Python", "Figma", "Power BI", "Financial modelling", "Technical SEO", "Claude", "Supabase", "Bloomberg certified"];
+    q.font = `500 34px ${FM}`;
+    let x = 10, y = 60;
+    for (const s of skills) {
+      const tw = q.measureText(s).width + 40;
+      if (x + tw > W) {
+        x = 10;
+        y += 76;
+      }
+      q.strokeStyle = "#c9b28a";
+      q.lineWidth = 2;
+      q.beginPath();
+      q.roundRect(x, y - 36, tw, 56, 28);
+      q.stroke();
+      txt(q, s, x + 20, y - 6, `500 34px ${FM}`, "#e9dcc0", "left", "middle");
+      x += tw + 16;
+    }
+  }), { transparent: true })), 0, 0.75, 0.03);
+  lights(g, [[-8, 0], [8, 0]], h - 0.5, 6, 0xffe4bf, 0.25);
+  return { spawn: [0, 6.2], look: [0, -0.2, -40], walk: 3.4, minPitch: -1.0, hotspot: [-6, 2.75, -2.8] };
+}
+
+function roomLounge(c) {
+  const w = 26, d = 18, h = 4.6, g = c.g;
+  shell(c, { w, d, h, floor: std({ map: rep(T.wood, w / 4, d / 4), color: 0x6b5545, roughness: 0.35 }), wall: std({ color: 0x2a2522, roughness: 0.8 }), glass: ["front", "left"], ceil: std({ color: 0x1d1a18, roughness: 0.9 }), headMat: std({ color: 0x1d1a18 }), signColor: "#c9a35f" });
+  // cove light
+  put(g, B(w - 4, 0.04, 0.3, M.bulb), 0, h - 0.4, d / 2 - 1.2);
+  downlights(g, w, d, h, 3.2, M.bulb);
+  // bar on the right wall
+  const rw = wallFrame(g, "right", w, d);
+  put(rw, P(8, 2.6, basic(cvt(512, 256, (q, W, H) => {
+    const gr = q.createLinearGradient(0, 0, 0, H);
+    gr.addColorStop(0, "#3a2410");
+    gr.addColorStop(1, "#c8862f");
+    q.fillStyle = gr;
+    q.fillRect(0, 0, W, H);
+  }))), 0, 2.4, 0.02);
+  for (const y of [1.6, 2.4, 3.2]) {
+    put(rw, B(8, 0.04, 0.35, M.glassTint), 0, y, 0.2);
+    for (let x = -3.8; x < 3.8; x += rnd(0.18, 0.3)) {
+      const bh = rnd(0.24, 0.36);
+      put(rw, C(0.035, 0.04, bh, pick([M.bottle, M.glassTint, M.bottle]), 12), x, y + 0.02 + bh / 2, 0.2);
+    }
+  }
+  const bar = grp(g, w / 2 - 2.4, 0, 0, -Math.PI / 2);
+  put(bar, B(7, 1.05, 0.7, M.stoneDark, 0.04), 0, 0.53, 0);
+  put(bar, B(7.2, 0.06, 0.85, M.brass, 0.02), 0, 1.08, 0);
+  for (let i = -2; i <= 2; i++) {
+    const st = grp(bar, i * 1.3, 0, 0.75);
+    put(st, C(0.2, 0.2, 0.08, M.leather, 20), 0, 0.78, 0);
+    put(st, C(0.025, 0.025, 0.74, M.brass, 8), 0, 0.37, 0);
+    put(st, C(0.2, 0.22, 0.02, M.brass, 20), 0, 0.01, 0);
+  }
+  blob(bar, 8, 2);
+  put(rw, P(5.6, 0.9, basic(signTex([{ t: "SAY HELLO", y: 64, f: `800 120px ${FD}`, c: "#f6d9a0", glow: "#c9862f", blur: 30, spacing: "14px" }], 1024, 128), { transparent: true })), 0, 4.0, 0.03);
+  // lounge seating by the glass
+  for (const [x, z] of [[-8, -6], [-3, -6], [2.5, -6], [-9, -1.5]]) {
+    armchair(g, x - 0.7, z, Math.PI * 0.85);
+    armchair(g, x + 0.7, z, -Math.PI * 0.85);
+    lowTable(g, x, z - 0.6, 0.7, 0.7, M.brass, 0.45);
+    put(g, C(0.03, 0.03, 0.06, M.bulb, 10), x, 0.51, z - 0.6);
+    const l = new THREE.PointLight(0xffb066, 1.2, 3, 2);
+    l.position.set(x, 0.7, z - 0.6);
+    g.add(l);
+  }
+  // the contact card on a stand
+  const stand = grp(g, 1.5, 0, 2.2, -0.5);
+  put(stand, B(0.06, 1.1, 0.06, M.brass), 0, 0.55, 0);
+  put(stand, B(0.5, 0.02, 0.4, M.brass), 0, 0.01, 0);
+  const card = grp(stand, 0, 1.15, 0);
+  card.rotation.x = -0.5;
+  put(card, B(0.9, 0.55, 0.03, M.black, 0.01), 0, 0, 0);
+  put(card, P(0.86, 0.51, basic(cvt(860, 510, (q, W, H) => {
+    q.fillStyle = "#14110f";
+    q.fillRect(0, 0, W, H);
+    txt(q, "GAURAV AGARWAL", 40, 90, `800 70px ${FD}`, "#e3b96c");
+    txt(q, "Product Manager · available for freelance", 42, 140, `400 26px ${FB}`, "#cfc6b8");
+    txt(q, "gauravag0808@gmail.com", 42, 260, `600 40px ${FM}`, "#fff");
+    txt(q, "linkedin.com/in/gaurav-agarwal-ga0202", 42, 330, `400 26px ${FM}`, "#cfc6b8");
+    txt(q, "github.com/Bittu25", 42, 375, `400 26px ${FM}`, "#cfc6b8");
+    txt(q, "FLOOR 17 · 555 M", 42, H - 40, `500 22px ${FM}`, "#7a6f60");
+  }))), 0, 0, 0.016);
+  plant(g, -12, -8, 1.4, true);
+  plant(g, 6.5, -8, 1.4, true);
+  rug(g, -5, -4, 12, 6, 0x5a4636);
+  lights(g, [[-6, -3], [3, 0], [9, 0]], h - 0.6, 7, 0xffd9a8, 0.25);
+  return { spawn: [-1, 7.4], look: [1.5, 1.2, 2.2], walk: 2.4 };
+}
+
+function roomSpire(c) {
+  const g = c.g;
+  const R = 3.2, H = 70;
+  const lattice = std({ color: 0x8d969f, metalness: 1, roughness: 0.35 });
+  put(g, C(R + 0.4, R + 0.4, 0.12, std({ map: rep(T.grating, 6, 6), roughness: 0.6, metalness: 0.6 }), 6), 0, -0.06, 0);
+  const pts = (y) => Array.from({ length: 6 }, (_, i) => {
+    const a = (i / 6) * Math.PI * 2;
+    const r = R * (1 - (y / H) * 0.7);
+    return [Math.cos(a) * r, y, Math.sin(a) * r];
+  });
+  for (let y = 0; y < H; y += 4) {
+    const a = pts(y), b = pts(y + 4);
+    for (let i = 0; i < 6; i++) {
+      rod(g, a[i], b[i], 0.09, lattice, 8);
+      rod(g, a[i], b[(i + 1) % 6], 0.04, lattice, 6);
+      rod(g, b[i], b[(i + 1) % 6], 0.05, lattice, 6);
+    }
+  }
+  // ladder up one face
+  for (let y = 0; y < H - 4; y += 0.32) {
+    const r = R * (1 - (y / H) * 0.7) - 0.35;
+    rod(g, [-0.25, y, -r], [0.25, y, -r], 0.018, M.steel, 6);
+  }
+  for (const sx of [-0.25, 0.25]) rod(g, [sx, 0, -(R - 0.35)], [sx, H - 4, -(R * 0.3 - 0.35 + R * 0.06)], 0.025, M.steel, 6);
+  // cage lamps on the way up
+  for (let y = 3; y < H; y += 7) {
+    const r = R * (1 - (y / H) * 0.7) - 0.1;
+    put(g, S(0.07, M.bulb, 8, 6), r * 0.7, y, r * 0.7);
+  }
+  const beacon = put(g, S(0.35, M.redLed, 16, 12), 0, H - 1, 0);
+  const red = new THREE.PointLight(0xff3b30, 30, 40, 2);
+  red.position.set(0, H - 2, 0);
+  g.add(red);
+  c.updates.push((dt, t) => {
+    const on = t % 1.5 < 0.3;
+    beacon.visible = on;
+    red.intensity = on ? 30 : 0;
+  });
+  const plate = grp(g, 1.2, 0, 1.2, -Math.PI * 0.75);
+  put(plate, B(0.05, 1.1, 0.05, M.steelDark), 0, 0.55, 0);
+  put(plate, P(0.8, 0.4, std({ map: signTex([{ t: "SPIRE · 828 M", y: 64, f: `800 100px ${FD}`, c: "#111" }], 1024, 128, { bg: "#f2c230" }) })), 0, 1.25, 0.03);
+  const amb = new THREE.AmbientLight(0xbfd0ff, 0.6);
+  g.add(amb);
+  put(g, S(0.05, M.bulb), 0, 2.4, 0);
+  const work = new THREE.PointLight(0xffe2b0, 8, 8, 2);
+  work.position.set(0, 2.5, 0);
+  g.add(work);
+  return { y: 762, spawn: [0, 1.4], look: [0, 40, -1.5], walk: 0, maxPitch: 1.45, minPitch: -0.6, eye: 1.62 };
+}
+
+// the scale model in the lobby, built the same way as the real thing
+function towerModel(scale) {
+  const g = new THREE.Group();
+  const mat = std({ color: 0xb9c6d2, metalness: 0.9, roughness: 0.2 });
+  const Ht = 600, TIERS = 27, th = Ht / TIERS, L0 = 64, dL = 6.4;
+  for (let k = 0; k < TIERS; k++) {
+    const y0 = k * th, ww = 30 - k * 0.5;
+    for (let w = 0; w < 3; w++) {
+      let n = 0;
+      for (let j = 3; j <= k; j++) if (j % 3 === w) n++;
+      const len = L0 - n * dL;
+      if (len < ww * 0.5 + 3) continue;
+      const a = (w * 2 * Math.PI) / 3 + Math.PI / 2;
+      put(g, B(len * scale, th * scale, ww * scale, mat), (Math.cos(a) * len * scale) / 2, (y0 + th / 2) * scale, (Math.sin(a) * len * scale) / 2, -a);
+      put(g, C((ww / 2) * scale, (ww / 2) * scale, th * scale, mat, 16), Math.cos(a) * len * scale, (y0 + th / 2) * scale, Math.sin(a) * len * scale);
+    }
+    const rc = 20 - k * 0.36;
+    put(g, C(rc * scale, rc * scale, th * scale, mat, 6), 0, (y0 + th / 2) * scale, 0);
+  }
+  put(g, C(0.35 * scale, 9 * scale, (TOP - Ht) * scale, M.steel, 12), 0, ((Ht + TOP) / 2) * scale, 0);
+  return g;
+}
+
+const ROOMS = {
+  lobby: roomLobby,
+  bits: roomLibrary,
+  kec: roomFinance,
+  sigma: roomSigma,
+  apac: roomApac,
+  epik: roomEpik,
+  alokbansal: roomStudyAbroad,
+  process: roomMechanical,
+  services: roomSuites,
+  atthetop: roomDeck,
+  contact: roomLounge,
+  spire: roomSpire,
+};
+
+// ---------- outside: sky, sun, desert city, lake and fountains ----------
+const skyU = {
+  top: { value: new THREE.Color() },
+  horizon: { value: new THREE.Color() },
+  ground: { value: new THREE.Color() },
+  sunCol: { value: new THREE.Color() },
+  sunDir: { value: new THREE.Vector3() },
+  stars: { value: 0 },
+};
+const sky = new THREE.Mesh(
+  new THREE.SphereGeometry(9000, 48, 24),
+  new THREE.ShaderMaterial({
+    uniforms: skyU,
+    side: THREE.BackSide,
+    depthWrite: false,
+    fog: false,
+    vertexShader: `varying vec3 vDir; void main(){ vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `
+      uniform vec3 top, horizon, ground, sunCol, sunDir; uniform float stars; varying vec3 vDir;
+      float hash(vec3 p){ p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+      void main(){
+        vec3 d = normalize(vDir); float h = d.y;
+        vec3 c = h > 0.0 ? mix(horizon, top, pow(h, 0.42)) : mix(horizon, ground, pow(-h, 0.5));
+        float s = max(dot(d, normalize(sunDir)), 0.0);
+        c += sunCol * (pow(s, 900.0) * 3.0 + pow(s, 12.0) * 0.28);
+        if (stars > 0.0 && h > 0.02) {
+          vec3 q = floor(d * 380.0);
+          float st = step(0.9982, hash(q)) * (0.5 + 0.5 * hash(q + 7.0));
+          c += vec3(st) * stars * smoothstep(0.02, 0.35, h);
+        }
+        gl_FragColor = vec4(c, 1.0);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`,
+  })
+);
+sky.renderOrder = -1;
+scene.add(sky);
+const hemi = new THREE.HemisphereLight(0xffffff, 0xc9a77a, 1);
+const sun = new THREE.DirectionalLight(0xffffff, 2);
+scene.add(hemi, sun, sun.target);
+
+// Time of day follows altitude: morning in the lobby, night at the spire.
+const KEYS = [
+  { p: 0.0, top: "#5ea6df", hor: "#f3dcb9", gnd: "#d9c3a0", sun: "#fff0d8", sunI: 2.4, hemi: 1.0, fog: "#e8d7bb", win: 0.0, stars: 0, el: 0.6, env: 0.7 },
+  { p: 0.42, top: "#3c70b4", hor: "#f5c08e", gnd: "#cfa98a", sun: "#ffd2a0", sunI: 2.0, hemi: 0.8, fog: "#e6c39d", win: 0.2, stars: 0, el: 0.3, env: 0.6 },
+  { p: 0.62, top: "#1d3466", hor: "#f09463", gnd: "#9a6f66", sun: "#ff9c66", sunI: 1.4, hemi: 0.5, fog: "#cf8f72", win: 0.9, stars: 0.2, el: 0.09, env: 0.45 },
+  { p: 1.0, top: "#050b20", hor: "#6f4672", gnd: "#241d33", sun: "#ff9a70", sunI: 0.3, hemi: 0.25, fog: "#33294a", win: 1.6, stars: 1, el: -0.02, env: 0.3 },
+].map((k) => ({ ...k, top: new THREE.Color(k.top), hor: new THREE.Color(k.hor), gnd: new THREE.Color(k.gnd), sun: new THREE.Color(k.sun), fog: new THREE.Color(k.fog) }));
+const mood = { top: new THREE.Color(), hor: new THREE.Color(), gnd: new THREE.Color(), sun: new THREE.Color(), fog: new THREE.Color() };
+function sampleMood(p) {
+  let a = KEYS[0], b = KEYS[KEYS.length - 1];
+  for (let i = 0; i < KEYS.length - 1; i++)
+    if (p >= KEYS[i].p && p <= KEYS[i + 1].p) {
+      a = KEYS[i];
+      b = KEYS[i + 1];
+      break;
+    }
+  const t = (p - a.p) / Math.max(1e-6, b.p - a.p);
+  for (const k of ["top", "hor", "gnd", "sun", "fog"]) mood[k].copy(a[k]).lerp(b[k], t);
+  for (const k of ["sunI", "hemi", "win", "stars", "el", "env"]) mood[k] = a[k] + (b[k] - a[k]) * t;
+  return mood;
+}
+let cityMat, carMat, cloudMats = [];
+const extGlass = [];
+const white = new THREE.Color(1, 1, 1);
+function applyMood(metres) {
+  const m = sampleMood(clamp(metres / TOP, 0, 1));
+  skyU.top.value.copy(m.top);
+  skyU.horizon.value.copy(m.hor);
+  skyU.ground.value.copy(m.gnd);
+  skyU.sunCol.value.copy(m.sun);
+  skyU.stars.value = m.stars;
+  const sd = new THREE.Vector3(Math.cos(m.el) * Math.cos(-2.0), Math.sin(m.el), Math.cos(m.el) * Math.sin(-2.0));
+  skyU.sunDir.value.copy(sd);
+  sun.position.copy(sd).multiplyScalar(2000).add(new THREE.Vector3(0, metres, 0));
+  sun.target.position.set(0, metres, 0);
+  sun.color.copy(m.sun);
+  sun.intensity = m.sunI;
+  hemi.color.copy(m.top).lerp(white, 0.55);
+  hemi.groundColor.copy(m.gnd);
+  hemi.intensity = m.hemi;
+  scene.environmentIntensity = m.env;
+  scene.fog.color.copy(m.fog);
+  scene.fog.near = 150 + metres * 0.6;
+  scene.fog.far = 3800 + metres * 3;
+  cityMat.emissiveIntensity = m.win;
+  carMat.emissiveIntensity = m.win * 0.9;
+  for (const c of cloudMats) c.color.copy(white).lerp(m.sun, 0.45).lerp(m.top, m.stars * 0.5);
+  for (const g of extGlass) g.emissiveIntensity = m.win;
+}
+
+function buildOutside() {
+  const ground = mesh(new THREE.PlaneGeometry(24000, 24000), std({ map: rep(T.sand, 300, 300), roughness: 1 }));
+  put(scene, ground, 0, -0.05, 0, 0, -Math.PI / 2);
+  put(scene, mesh(new THREE.CircleGeometry(150, 64), std({ map: rep(T.paving, 60, 60), roughness: 0.85 })), 0, -0.02, 0, 0, -Math.PI / 2);
+  // the lake in front of the windows, with fountains that dance
+  const LAKE = { x: 30, z: -330, r: 180 };
+  put(scene, mesh(new THREE.CircleGeometry(LAKE.r, 80), std({ color: 0x24587e, metalness: 0.9, roughness: 0.06 })), LAKE.x, 0.05, LAKE.z, 0, -Math.PI / 2);
+  const jets = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.5, 1.4, 1, 8, 1, true).translate(0, 0.5, 0), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false }), 40);
+  const jetPos = [];
+  for (let i = 0; i < 40; i++) {
+    const a = Math.PI * (0.15 + (i / 39) * 0.7);
+    jetPos.push([LAKE.x + Math.cos(a) * 120, LAKE.z + Math.sin(a) * 60 - 20]);
+  }
+  scene.add(jets);
+  // roads on a grid, with traffic on two of them
+  const roadMat = std({ color: 0x45494f, roughness: 0.9 });
+  for (let k = -8; k <= 8; k++) {
+    if (Math.abs(k) < 1) continue;
+    put(scene, P(18, 12000, roadMat), k * 320, 0.02, 0, 0, -Math.PI / 2);
+    put(scene, P(12000, 18, roadMat), 0, 0.02, k * 320 - 160, 0, -Math.PI / 2);
+  }
+  put(scene, P(40, 12000, roadMat), -480, 0.03, 0, 0, -Math.PI / 2);
+  // city
+  cityMat = std({ map: T.city, emissiveMap: T.cityLights, emissive: 0xffc98a, emissiveIntensity: 0, roughness: 0.5, metalness: 0.4 });
+  const box = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
+  const N = 2200;
+  const city = new THREE.InstancedMesh(box, cityMat, N);
+  const tops = new THREE.InstancedMesh(box, cityMat, N);
+  const tmp = new THREE.Object3D();
+  const palette = ["#d9cdb6", "#c3ccd6", "#a9b8c8", "#e6dccb", "#8fa3b8", "#b9a88e", "#9fb4c4"].map((c) => new THREE.Color(c));
+  let n = 0, nt = 0;
+  for (let tries = 0; n < N && tries < N * 5; tries++) {
+    const r = 230 + Math.pow(Math.random(), 0.8) * 3200;
+    const a = Math.random() * Math.PI * 2;
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if (Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r + 30) continue;
+    const mx = ((x % 320) + 320) % 320, mz = (((z + 160) % 320) + 320) % 320;
+    if (mx < 22 || mx > 298 || mz < 22 || mz > 298 || Math.abs(x + 480) < 40) continue;
+    // keep the lake side open so the tower reads from the default view
+    if (z < 0 && Math.abs(x) < 380 + -z * 0.25 && r < 1500) continue;
+    const near = r < 1200 ? 0.9 : 0.75;
+    const hgt = 10 + Math.pow(Math.random(), 2.4) * 240 * near;
+    const sx = rnd(18, 50), sz = rnd(18, 50);
+    tmp.position.set(x, 0, z);
+    tmp.rotation.set(0, Math.random() < 0.8 ? 0 : rnd(0.6), 0);
+    tmp.scale.set(sx, hgt, sz);
+    tmp.updateMatrix();
+    city.setMatrixAt(n, tmp.matrix);
+    const col = pick(palette);
+    city.setColorAt(n, col);
+    n++;
+    if (hgt > 60 && Math.random() < 0.5) {
+      tmp.position.y = hgt;
+      tmp.scale.set(sx * 0.6, hgt * rnd(0.1, 0.25), sz * 0.6);
+      tmp.updateMatrix();
+      tops.setMatrixAt(nt, tmp.matrix);
+      tops.setColorAt(nt, col);
+      nt++;
+    }
+  }
+  city.count = n;
+  tops.count = nt;
+  scene.add(city, tops);
+  // palms around the plaza
+  const trunk = std({ color: 0x7a5c3e, roughness: 0.9 });
+  for (let i = 0; i < 34; i++) {
+    const a = (i / 34) * Math.PI * 2, r = rnd(100, 145);
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if (Math.abs(x) < 20 && Math.abs(z) < 16) continue;
+    const p = grp(scene, x, 0, z, rnd(6));
+    const ht = rnd(7, 11);
+    put(p, C(0.22, 0.35, ht, trunk, 8), 0, ht / 2, 0, 0, rnd(-0.06, 0.06));
+    for (let k = 0; k < 9; k++) {
+      const f = grp(p, 0, ht, 0, (k / 9) * Math.PI * 2);
+      put(f, B(0.7, 0.04, 3.6, M.leaf), 0, -0.4, 1.6, 0, -0.45);
+    }
+  }
+  // traffic
+  carMat = std({ color: 0xffffff, roughness: 0.4, metalness: 0.5, emissive: 0xfff2d0, emissiveIntensity: 0 });
+  const cars = new THREE.InstancedMesh(new THREE.BoxGeometry(2, 1.5, 4.6).translate(0, 0.75, 0), carMat, 260);
+  const carCol = ["#f5f5f5", "#1d1f22", "#9aa3ad", "#b8322a", "#2f5a8a", "#e8e2d4"].map((c) => new THREE.Color(c));
+  const lanes = [];
+  for (let i = 0; i < 260; i++) {
+    lanes.push({ road: i % 3, lane: (i % 4) - 1.5, off: rnd(12000), sp: rnd(16, 28) * (i % 2 ? 1 : -1) });
+    cars.setColorAt(i, pick(carCol));
+  }
+  scene.add(cars);
+  // clouds around 360–470 m
+  const clouds = new THREE.Group();
+  scene.add(clouds);
+  for (let i = 0; i < 46; i++) {
+    const m = new THREE.SpriteMaterial({ map: T.cloud, transparent: true, depthWrite: false, opacity: rnd(0.4, 0.75) });
+    cloudMats.push(m);
+    const s = new THREE.Sprite(m);
+    const r = rnd(160, 1400), a = rnd(Math.PI * 2);
+    s.position.set(Math.cos(a) * r, rnd(360, 470), Math.sin(a) * r);
+    const sc = rnd(160, 420);
+    s.scale.set(sc, sc * 0.42, 1);
+    clouds.add(s);
+  }
+  return (dt, t) => {
+    for (let i = 0; i < 40; i++) {
+      const hh = 12 + 55 * (0.5 + 0.5 * Math.sin(t * 1.6 + i * 0.35)) * (0.6 + 0.4 * Math.sin(t * 0.37 + i));
+      tmp.position.set(jetPos[i][0], 0, jetPos[i][1]);
+      tmp.rotation.set(0, 0, 0);
+      tmp.scale.set(1, hh, 1);
+      tmp.updateMatrix();
+      jets.setMatrixAt(i, tmp.matrix);
+    }
+    jets.instanceMatrix.needsUpdate = true;
+    lanes.forEach((c, i) => {
+      const s = ((c.off + t * c.sp) % 12000 + 12000) % 12000 - 6000;
+      if (c.road === 0) tmp.position.set(-480 + c.lane * 4, 0.05, s), tmp.rotation.set(0, c.sp > 0 ? 0 : Math.PI, 0);
+      else if (c.road === 1) tmp.position.set(s, 0.05, -800 + c.lane * 4), tmp.rotation.set(0, Math.PI / 2, 0);
+      else tmp.position.set(640 + c.lane * 4, 0.05, s), tmp.rotation.set(0, 0, 0);
+      tmp.scale.set(1, 1, 1);
+      tmp.updateMatrix();
+      cars.setMatrixAt(i, tmp.matrix);
+    });
+    cars.instanceMatrix.needsUpdate = true;
+    clouds.rotation.y += dt * 0.003;
+  };
+}
+
+
+// ---------- the tower from outside ----------
+const exterior = new THREE.Group();
+const EH = 600, TIERS = 27, TH = EH / TIERS, L0 = 64, DL = 6.4;
+const envelope = [];
+const gate = new THREE.Group();
+let extBeacon;
+function buildExterior() {
+  // glass curtain wall: steel fins every bay, a dark spandrel at every floor, and lit windows for the evening
+  const facade = shared(cvt(256, 256, (g, s) => {
+    const grad = g.createLinearGradient(0, 0, s, 0);
+    grad.addColorStop(0, "#71869c");
+    grad.addColorStop(0.5, "#9db1c4");
+    grad.addColorStop(1, "#71869c");
+    g.fillStyle = grad;
+    g.fillRect(0, 0, s, s);
+    g.fillStyle = "rgba(34, 48, 64, 0.5)";
+    for (let y = 0; y < s; y += 16) g.fillRect(0, y, s, 3);
+    g.fillStyle = "#e8eef4";
+    for (let x = 0; x < s; x += 32) g.fillRect(x, 0, 3, s);
+  }, true));
+  const lit = shared(cvt(256, 256, (g, s) => {
+    g.fillStyle = "#000";
+    g.fillRect(0, 0, s, s);
+    for (let y = 0; y < s; y += 16)
+      for (let x = 0; x < s; x += 32)
+        if (Math.random() < 0.45) {
+          g.fillStyle = `hsl(${rnd(32, 46)}, 90%, ${rnd(50, 80)}%)`;
+          g.fillRect(x + 4, y + 4, 26, 10);
+        }
+  }, true));
+  const glassMat = (rx, ry) => {
+    const m = std({ map: rep(facade, rx, ry), emissiveMap: rep(lit, rx, ry), emissive: 0xffc98a, emissiveIntensity: 0, metalness: 0.78, roughness: 0.2 });
+    extGlass.push(m);
+    return m;
+  };
+  for (let k = 0; k < TIERS; k++) {
+    const y0 = k * TH, ww = 30 - k * 0.5;
+    let reach = 0;
+    for (let w = 0; w < 3; w++) {
+      let n = 0;
+      for (let j = 3; j <= k; j++) if (j % 3 === w) n++;
+      const len = L0 - n * DL;
+      if (len < ww * 0.5 + 3) continue;
+      reach = Math.max(reach, len + ww / 2);
+      const a = (w * 2 * Math.PI) / 3 + Math.PI / 2;
+      const dx = Math.cos(a), dz = Math.sin(a);
+      put(exterior, B(len, TH, ww, glassMat(Math.max(1, Math.round(len / 14)), TH / 60)), (dx * len) / 2, y0 + TH / 2, (dz * len) / 2, -a);
+      put(exterior, C(ww / 2, ww / 2, TH, glassMat(Math.max(1, Math.round((ww * 1.6) / 14)), TH / 60), 24), dx * len, y0 + TH / 2, dz * len);
+      put(exterior, B(len + ww / 2, 0.9, ww + 0.8, M.steel), (dx * (len + ww / 4)) / 2, y0 + TH, (dz * (len + ww / 4)) / 2, -a);
+    }
+    const rc = 20 - k * 0.36;
+    put(exterior, C(rc, rc, TH, glassMat(4, TH / 60), 6), 0, y0 + TH / 2, 0);
+    envelope.push(Math.max(reach, rc) + 5);
+  }
+  [[9.5, 36], [7.5, 34], [5.5, 30]].reduce((y, [r, h]) => {
+    put(exterior, C(r * 0.92, r, h, glassMat(2, h / 60), 6), 0, y + h / 2, 0);
+    return y + h;
+  }, EH);
+  put(exterior, C(0.35, 3.4, TOP - 700, M.steel, 12), 0, 700 + (TOP - 700) / 2, 0);
+  extBeacon = put(exterior, S(1.8, M.redLed, 12, 8), 0, TOP + 1, 0);
+
+  // the entrance between two wings, facing the lake
+  put(gate, B(18, 0.3, 5, M.stone), 0, 0.15, -30.5);
+  put(gate, B(16, 0.5, 9, M.white, 0.1), 0, 6.6, -26);
+  put(gate, B(16.2, 0.12, 9.2, M.brass), 0, 6.3, -26);
+  for (const x of [-7, 7]) put(gate, C(0.3, 0.3, 6.3, M.steel, 16), x, 3.15, -30);
+  put(gate, B(13, 6.2, 0.5, M.steelDark), 0, 3.1, -21.6);
+  put(gate, P(12, 5.4, std({ color: 0x9fc3dc, metalness: 0.2, roughness: 0.05, emissive: 0xffd9a0, emissiveIntensity: 0.25 })), 0, 2.8, -21.9, Math.PI);
+  for (let x = -6; x <= 6; x += 2) put(gate, B(0.12, 5.4, 0.15, M.steel), x, 2.8, -22);
+  for (const x of [-1, 1]) put(gate, B(0.08, 1.2, 0.08, M.brass), x * 0.35, 1.4, -22.15);
+  put(gate, P(10, 1.1, basic(signTex([{ t: "GAURAV AGARWAL TOWER", y: 60, f: `800 96px ${FD}`, c: "#fff3dc", glow: "#e3a85a", blur: 24, spacing: "8px" }, { t: "ENTRANCE · LOBBY", y: 112, f: `500 30px ${FM}`, c: "#e9d5ad", spacing: "6px" }], 1024, 128), { transparent: true })), 0, 7.6, -30.65, Math.PI);
+  const glow = new THREE.PointLight(0xffd29a, 60, 30, 2);
+  glow.position.set(0, 5.8, -27);
+  gate.add(glow);
+  exterior.add(gate);
+
+  // a band of light on every floor that holds a chapter
+  FLOORS.forEach((f, i) => {
+    const y = Math.max(3, f.m);
+    const r = envelopeAt(y);
+    const band = put(exterior, C(r, r, 1.4, std({ color: 0xffd08a, emissive: 0xffc070, emissiveIntensity: 0.6, transparent: true, opacity: 0.45, side: THREE.DoubleSide }), 72, true), 0, y, 0);
+    band.userData.floor = i;
+    bands.push(band);
+  });
+  scene.add(exterior);
+}
+const bands = [];
+const envelopeAt = (y) => (y < EH ? envelope[Math.min(TIERS - 1, Math.floor(y / TH))] : y < 700 ? 15 : 8);
+
+// ---------- the current room ----------
+let room = null;
+function disposeRoom(r) {
+  scene.remove(r.g);
+  r.g.traverse((o) => {
+    if (o.geometry && !o.geometry.userData.shared) o.geometry.dispose();
+    const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+    for (const m of ms)
+      if (!m.userData.shared) {
+        for (const k of ["map", "emissiveMap"]) if (m[k] && !m[k].userData.shared) m[k].dispose();
+        m.dispose();
+      }
+  });
+}
+
+let mode = "outside";
+const view = { x: 0, z: 0, yaw: 0, pitch: 0, tYaw: 0, tPitch: 0, walkYaw: 0, walk: 0, walkT: 1, eye: 1.62, min: -0.7, max: 0.75, baseYaw: 0 };
+function buildRoom(i) {
+  if (room) disposeRoom(room);
+  const f = FLOORS[i];
+  const c = { g: new THREE.Group(), updates: [], f };
+  const spec = (ROOMS[f.id] || roomProject)(c, f);
+  const y = spec.y ?? (f.m === 0 ? 0.05 : f.m);
+  c.g.position.y = y;
+  scene.add(c.g);
+  c.g.updateMatrixWorld(true);
+  // anything printed on a large panel is a board you can click
+  const boards = [];
+  c.g.traverse((o) => {
+    const p = o.geometry?.parameters;
+    const map = o.material?.map;
+    if (!o.isMesh || o.material === M.shadow || o.geometry.type !== "PlaneGeometry" || !map || map.wrapS === THREE.RepeatWrapping) return;
+    if (p.width * p.height >= 0.3) boards.push(o);
+  });
+  let spot;
+  if (spec.hotspot) spot = new THREE.Vector3(spec.hotspot[0], spec.hotspot[1] + y, spec.hotspot[2]);
+  else if (boards.length) {
+    const big = boards.reduce((a, b) => (b.geometry.parameters.width * b.geometry.parameters.height > a.geometry.parameters.width * a.geometry.parameters.height ? b : a));
+    const box = new THREE.Box3().setFromObject(big);
+    spot = box.getCenter(new THREE.Vector3());
+    spot.y = box.max.y + 0.2;
+  }
+  room = { g: c.g, updates: c.updates, y, boards, spot, i };
+  view.x = spec.spawn[0];
+  view.z = spec.spawn[1];
+  view.eye = spec.eye || 1.62;
+  const [tx, ty, tz] = spec.look;
+  const dx = tx - view.x, dz = tz - view.z;
+  view.yaw = view.tYaw = view.baseYaw = Math.atan2(-dx, -dz);
+  view.pitch = view.tPitch = Math.atan2(ty - view.eye, Math.hypot(dx, dz));
+  view.min = spec.minPitch ?? -0.7;
+  view.max = spec.maxPitch ?? 0.75;
+  view.walk = spec.walk ?? 2;
+  view.walkYaw = 0;
+  view.walkT = 0;
+  view.arrived = false;
+  moodNow = moodGoal = f.m;
+  applyMood(f.m);
+}
+
+// ---------- outside camera: orbit the tower ----------
+const orbit = { th: Math.PI, R: 860, y: 200, look: 400 };
+const goal = { ...orbit };
+let focusIndex = null, moodNow = 250, moodGoal = 250, flying = false;
+function overview() {
+  Object.assign(goal, { R: 860, y: 200, look: 400 });
+  focusIndex = null;
+  moodGoal = 250;
+}
+function focusFloor(i) {
+  const m = FLOORS[i].m;
+  focusIndex = i;
+  if (i === 0) Object.assign(goal, { th: Math.PI, R: 230, y: 24, look: 40 });
+  else if (FLOORS[i].level === "Tip") Object.assign(goal, { R: 240, y: 700, look: 760 });
+  else Object.assign(goal, { R: 200 + m * 0.12, y: m + 18, look: m });
+  moodGoal = m;
+}
+function setOutsideMode() {
+  mode = "outside";
+  exterior.visible = true;
+  if (room) {
+    disposeRoom(room);
+    room = null;
+  }
+}
+addEventListener("tower:focus", (e) => (e.detail.index == null ? overview() : focusFloor(e.detail.index)));
+addEventListener("tower:overview", overview);
+addEventListener("tower:fly-in", (e) => {
+  const i = e.detail.index;
+  flying = true;
+  if (i === 0) Object.assign(goal, { th: Math.PI, R: 52, y: 5, look: 5 });
+  else Object.assign(goal, { R: Math.max(40, envelopeAt(FLOORS[i].m) + 18), y: FLOORS[i].m + 2, look: FLOORS[i].m + 1 });
+  moodGoal = FLOORS[i].m;
+});
+addEventListener("tower:go", (e) => {
+  mode = "inside";
+  flying = false;
+  exterior.visible = false;
+  buildRoom(e.detail.index);
+});
+addEventListener("tower:outside", (e) => {
+  setOutsideMode();
+  focusFloor(e.detail.index);
+  Object.assign(orbit, goal);
+  orbit.R = goal.R * 0.4;
+  moodNow = moodGoal;
+});
+addEventListener("tower:arrive", () => {
+  view.arrived = true;
+  lastInput = performance.now();
+  view.walkT = 0;
+});
+
+// ---------- floor tags on the outside, and the "read more" spot inside ----------
+const tagBox = document.getElementById("tags");
+const spotBox = document.getElementById("spots");
+const tags = FLOORS.map((f, i) => {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "tag " + (i % 2 ? "r" : "l");
+  b.innerHTML = `<i>${f.level === "G" ? "G" : f.level === "Tip" ? "828 m" : f.level}</i><span>${f.title}</span>`;
+  b.setAttribute("aria-label", `${f.level === "G" ? "Ground floor" : f.level === "Tip" ? "Spire" : "Floor " + f.level}: ${f.title}`);
+  b.addEventListener("click", () => dispatchEvent(new CustomEvent("tower:pick", { detail: { index: i } })));
+  tagBox.appendChild(b);
+  return b;
+});
+const gateTag = document.createElement("button");
+gateTag.type = "button";
+gateTag.className = "tag gate";
+gateTag.textContent = "Enter the lobby →";
+gateTag.addEventListener("click", () => dispatchEvent(new CustomEvent("tower:gate")));
+tagBox.appendChild(gateTag);
+const spotBtn = document.createElement("button");
+spotBtn.type = "button";
+spotBtn.className = "spot";
+spotBtn.addEventListener("click", () => room && dispatchEvent(new CustomEvent("tower:board", { detail: { index: room.i } })));
+spotBox.appendChild(spotBtn);
+
+const v3 = new THREE.Vector3(), right = new THREE.Vector3(), fwd = new THREE.Vector3();
+function project(p) {
+  v3.copy(p).project(camera);
+  return [((v3.x + 1) / 2) * innerWidth, ((1 - v3.y) / 2) * innerHeight, v3.z < 1 && Math.abs(v3.x) < 1.1 && Math.abs(v3.y) < 1.1];
+}
+function placeTags() {
+  right.setFromMatrixColumn(camera.matrixWorld, 0);
+  FLOORS.forEach((f, i) => {
+    const y = f.m === 0 ? 14 : f.m;
+    const side = i % 2 ? 1 : -1;
+    const p = new THREE.Vector3().copy(right).multiplyScalar(side * envelopeAt(Math.max(3, f.m))).setY(y);
+    const [x, sy, ok] = project(p);
+    const t = tags[i];
+    t.style.visibility = ok ? "visible" : "hidden";
+    t.style.transform = `translate(${x | 0}px, ${sy | 0}px) translate(${side > 0 ? "14px" : "calc(-100% - 14px)"}, -50%)`;
+    t.setAttribute("aria-current", String(i === focusIndex));
+    t._y = sy;
+    t._x = x;
+    t._ok = ok;
+  });
+  // keep tags on the same side from overlapping: nudge them apart, keeping their order
+  for (const side of [0, 1]) {
+    const list = tags.filter((t, i) => i % 2 === side && t._ok).sort((a, b) => b._y - a._y);
+    let last = Infinity;
+    for (const t of list) {
+      const y = Math.min(t._y, last - 26);
+      last = y;
+      t.style.transform = `translate(${t._x | 0}px, ${y | 0}px) translate(${side ? "14px" : "calc(-100% - 14px)"}, -50%)`;
+    }
+  }
+  const [gx, gy, gok] = project(new THREE.Vector3(0, 9.5, -31));
+  gateTag.style.visibility = gok && orbit.R < 700 ? "visible" : gok ? "visible" : "hidden";
+  gateTag.style.transform = `translate(${gx | 0}px, ${gy | 0}px) translate(-50%, -100%)`;
+}
+function placeSpot() {
+  if (!room || !room.spot) return (spotBtn.style.visibility = "hidden");
+  camera.getWorldDirection(fwd);
+  const toSpot = v3.copy(room.spot).sub(camera.position);
+  const facing = toSpot.normalize().dot(fwd) > 0.2;
+  const [x, y, ok] = project(room.spot);
+  spotBtn.style.visibility = ok && facing ? "visible" : "hidden";
+  spotBtn.style.transform = `translate(${x | 0}px, ${y | 0}px) translate(-50%, -100%)`;
+}
+addEventListener("tower:label", (e) => (spotBtn.innerHTML = `<b>i</b>${e.detail.text}`));
+
+// ---------- pointer: drag to look or orbit, click boards and the entrance ----------
+let drag = null, lastInput = 0, hover = null;
+const el = renderer.domElement;
+const ray = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+const highlight = new THREE.BoxHelper(new THREE.Object3D(), 0xe3b96c);
+highlight.visible = false;
+scene.add(highlight);
+function pickAt(cx, cy) {
+  ndc.set((cx / innerWidth) * 2 - 1, -(cy / innerHeight) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  if (mode === "inside" && room) return ray.intersectObjects(room.boards, false)[0]?.object || null;
+  if (mode === "outside") {
+    if (ray.intersectObject(gate, true).length) return gate;
+    const b = ray.intersectObjects(bands, false)[0];
+    return b ? b.object : null;
+  }
+  return null;
+}
+el.addEventListener("pointerdown", (e) => {
+  drag = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY };
+  el.setPointerCapture(e.pointerId);
+  lastInput = performance.now();
+});
+el.addEventListener("pointermove", (e) => {
+  if (!drag) {
+    const hit = pickAt(e.clientX, e.clientY);
+    if (hit !== hover) {
+      hover = hit;
+      el.style.cursor = hit ? "pointer" : "";
+      if (hit && mode === "inside") {
+        highlight.setFromObject(hit);
+        highlight.visible = true;
+      } else highlight.visible = false;
+    }
+    return;
+  }
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  drag.x = e.clientX;
+  drag.y = e.clientY;
+  lastInput = performance.now();
+  if (mode === "inside") {
+    const k = e.pointerType === "touch" ? 0.006 : 0.0035;
+    view.tYaw += dx * k;
+    view.tPitch = clamp(view.tPitch + dy * k, view.min, view.max);
+  } else if (!flying) {
+    goal.th -= dx * 0.005;
+    const k = goal.R * 0.0014;
+    goal.y = clamp(goal.y + dy * k, 3, 900);
+    goal.look = clamp(goal.look + dy * k, 5, 830);
+  }
+});
+const endDrag = (e) => {
+  if (drag && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 6) {
+    const hit = pickAt(e.clientX, e.clientY);
+    if (hit === gate) dispatchEvent(new CustomEvent("tower:gate"));
+    else if (hit && mode === "outside") dispatchEvent(new CustomEvent("tower:pick", { detail: { index: hit.userData.floor } }));
+    else if (hit && room) dispatchEvent(new CustomEvent("tower:board", { detail: { index: room.i } }));
+  }
+  drag = null;
+};
+el.addEventListener("pointerup", endDrag);
+el.addEventListener("pointercancel", () => (drag = null));
+addEventListener(
+  "wheel",
+  (e) => {
+    if (mode !== "outside" || flying) return;
+    if (e.target.closest && e.target.closest(".card, .rail, .modal")) return;
+    e.preventDefault();
+    goal.R = clamp(goal.R * (1 + e.deltaY * 0.0012), 90, 1700);
+    lastInput = performance.now();
+  },
+  { passive: false }
+);
+addEventListener("keydown", (e) => {
+  if (mode !== "inside") return;
+  if (e.key === "ArrowLeft") view.tYaw += 0.35;
+  else if (e.key === "ArrowRight") view.tYaw -= 0.35;
+  else return;
+  lastInput = performance.now();
+});
+
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.fov = w > 820 ? 60 : 72;
+  if (w > 820) camera.setViewOffset(w, h, w * 0.06, 0, w, h);
+  else camera.setViewOffset(w, h, 0, h * 0.2, w, h);
+  camera.updateProjectionMatrix();
+}
+addEventListener("resize", resize);
+
+// ---------- frame loop ----------
+let updateOutside;
+let prev = performance.now(), first = true;
+const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+function frame(now) {
+  const dt = Math.min(0.05, (now - prev) / 1000);
+  prev = now;
+  const t = now / 1000;
+  if (mode === "inside" && room) {
+    if (view.arrived && view.walkT < 1) view.walkT = Math.min(1, view.walkT + dt / (reduceMotion ? 0.01 : 3.2));
+    const k = view.arrived ? easeOut(view.walkT) : 0;
+    const wx = view.x - Math.sin(view.walkYaw) * view.walk * k;
+    const wz = view.z - Math.cos(view.walkYaw) * view.walk * k;
+    // a gentle look-around when nobody touches anything
+    if (!drag && !reduceMotion && now - lastInput > 8000 && view.arrived) view.tYaw = view.baseYaw + Math.sin((now - lastInput - 8000) / 6000) * 0.35;
+    view.yaw += (view.tYaw - view.yaw) * Math.min(1, dt * 6);
+    view.pitch += (view.tPitch - view.pitch) * Math.min(1, dt * 6);
+    const bob = view.arrived && view.walkT < 1 && !reduceMotion ? Math.sin(view.walkT * 22) * 0.012 : 0;
+    camera.position.set(wx, room.y + view.eye + bob, wz);
+    camera.rotation.set(view.pitch, view.yaw, 0);
+    for (const u of room.updates) u(dt, t);
+    camera.updateMatrixWorld();
+    placeSpot();
+  } else {
+    if (!drag && !flying && !reduceMotion && now - lastInput > 4000) goal.th += dt * 0.025;
+    const s = Math.min(1, dt * (flying ? 1.9 : 2.2));
+    for (const k of ["th", "R", "y", "look"]) orbit[k] += (goal[k] - orbit[k]) * s;
+    moodNow += (moodGoal - moodNow) * Math.min(1, dt * 1.2);
+    applyMood(moodNow);
+    scene.fog.near = 1400;
+    scene.fog.far = 7000;
+    camera.position.set(Math.sin(orbit.th) * orbit.R, orbit.y, Math.cos(orbit.th) * orbit.R);
+    camera.lookAt(0, orbit.look, 0);
+    camera.updateMatrixWorld();
+    bands.forEach((b, i) => (b.material.opacity = i === focusIndex ? 0.75 + Math.sin(t * 4) * 0.2 : 0.28));
+    extBeacon.visible = now % 1500 < 260;
+    placeTags();
+  }
+  sky.position.copy(camera.position);
+  updateOutside(dt, t);
+  renderer.render(scene, camera);
+  if (first) {
+    first = false;
+    document.body.classList.add("gl-ready");
+    dispatchEvent(new CustomEvent("tower:ready"));
+  }
+  requestAnimationFrame(frame);
+}
+
+(async () => {
+  try {
+    await Promise.race([
+      Promise.all([`800 100px ${FD}`, `600 40px ${FM}`, `500 40px ${FM}`, `600 40px ${FB}`, `700 40px ${FH}`, `500 40px ${FH}`].map((f) => document.fonts.load(f))),
+      new Promise((r) => setTimeout(r, 4000)),
+    ]);
+  } catch {}
+  initTextures();
+  initMaterials();
+  updateOutside = buildOutside();
+  buildExterior();
+  resize();
+  if (window.TOWER_FOCUS != null) {
+    focusFloor(window.TOWER_FOCUS);
+    Object.assign(orbit, goal);
+    moodNow = moodGoal;
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
