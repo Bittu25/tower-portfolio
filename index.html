@@ -1086,6 +1086,7 @@ setTimeout(() => {
 import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 // Every floor is a room built at its real height, so the windows look down on the city from there.
 const FLOORS = window.TOWER_FLOORS;
@@ -1106,11 +1107,15 @@ try {
   document.body.classList.add("no-gl");
   throw err;
 }
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+// start a little under full Retina resolution; the frame loop adjusts it to keep motion smooth
+let pixelRatio = Math.min(devicePixelRatio, 1.5);
+renderer.setPixelRatio(pixelRatio);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 // real sun shadows outside: the tower and the skyline shade each other and the streets
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+// the city doesn't move, so shadows are redrawn only when the sun does
+renderer.shadowMap.autoUpdate = false;
 renderer.toneMappingExposure = 1.0;
 host.appendChild(renderer.domElement);
 const ANISO = renderer.capabilities.getMaxAnisotropy();
@@ -3726,6 +3731,7 @@ function refreshSkyEnv(metres) {
   }
   if (skyEnv) skyEnv.dispose();
   skyEnv = rt;
+  renderer.shadowMap.needsUpdate = true;
 }
 const reflectSky = (m) => (skyEnvMats.push(m), m);
 
@@ -3739,7 +3745,7 @@ const FACADE_GLSL = {
     vec2 cell = vec2(hu / 1.5, hv / 3.9);
     vec2 fw = max(fwidth(cell), vec2(1e-4));
     vec2 gq = abs(fract(cell) - 0.5);
-    float far = clamp(max(fw.x, fw.y) * 3.0 - 0.35, 0.0, 1.0);
+    float far = clamp(max(fw.x, fw.y) * 1.3 - 0.6, 0.0, 1.0);
     float frame = max(1.0 - smoothstep(0.022 - fw.x, 0.022 + fw.x, 0.5 - gq.x), 1.0 - smoothstep(0.03 - fw.y, 0.03 + fw.y, 0.5 - gq.y));
     float span = 1.0 - smoothstep(0.38 - fw.y, 0.38 + fw.y, gq.y);
     span = mix(1.0 - span, 0.24, far);
@@ -3754,7 +3760,7 @@ const FACADE_GLSL = {
     vec2 fw = max(fwidth(cell), vec2(1e-4));
     vec2 gq = abs(fract(cell) - 0.5);
     float win = smoothstep(0.28 + fw.x, 0.28 - fw.x, gq.x) * smoothstep(0.24 + fw.y, 0.24 - fw.y, gq.y);
-    float far = clamp(max(fw.x, fw.y) * 3.0 - 0.35, 0.0, 1.0);
+    float far = clamp(max(fw.x, fw.y) * 1.3 - 0.6, 0.0, 1.0);
     win = mix(win, 0.26, far);
     fGlass = wall * win;
     fWin = fGlass;
@@ -3764,7 +3770,7 @@ const FACADE_GLSL = {
     vec2 cell = vec2(hu / 1.4, hv / 3.75);
     vec2 fw = max(fwidth(cell), vec2(1e-4));
     vec2 gq = abs(fract(cell) - 0.5);
-    float far = clamp(max(fw.x, fw.y) * 3.0 - 0.35, 0.0, 1.0);
+    float far = clamp(max(fw.x, fw.y) * 1.3 - 0.6, 0.0, 1.0);
     float fin = 1.0 - smoothstep(0.08 - fw.x, 0.08 + fw.x, 0.5 - gq.x);
     float span = 1.0 - smoothstep(0.035 - fw.y, 0.035 + fw.y, 0.5 - gq.y);
     float mh = mod(hv, 112.5);
@@ -3947,7 +3953,7 @@ function buildFountains(L) {
     const a = Math.PI * (0.2 + (i / 25) * 0.6);
     jets.push([L.x + Math.cos(a) * 80, L.z + Math.sin(a) * 40 - 30, i + 50, 0.45]);
   }
-  const PER = 340, MIST = 12;
+  const PER = 220, MIST = 6;
   const n = jets.length * (PER + MIST);
   const pos = new Float32Array(n * 3), jet = new Float32Array(n * 2), seed = new Float32Array(n * 4);
   let k = 0;
@@ -4019,7 +4025,7 @@ function buildFountains(L) {
         vMist = aSeed.w;
         vec4 mvPosition = modelViewMatrix * vec4(p, 1.0);
         gl_Position = projectionMatrix * mvPosition;
-        gl_PointSize = clamp(size * uPx / -mvPosition.z, 1.0, 256.0);
+        gl_PointSize = clamp(size * uPx / -mvPosition.z, 1.0, 96.0);
         #include <logdepthbuf_vertex>
         #include <fog_vertex>
       }`,
@@ -4211,12 +4217,13 @@ function buildOutside() {
   const clouds = new THREE.Group();
   scene.add(clouds);
   for (let i = 0; i < 46; i++) {
-    const m = new THREE.SpriteMaterial({ map: T.cloud, transparent: true, depthWrite: false, opacity: rnd(0.4, 0.75) });
+    const m = new THREE.SpriteMaterial({ map: T.cloud, transparent: true, depthWrite: false, opacity: rnd(0.3, 0.55) });
     cloudMats.push(m);
     const s = new THREE.Sprite(m);
     // a fixed draw order, so overlapping clouds don't swap places and pop as the camera moves
     s.renderOrder = 1 + i;
-    const r = rnd(160, 1400), a = rnd(Math.PI * 2);
+    // clouds sit out over the city, not between you and the tower
+    const r = rnd(750, 2400), a = rnd(Math.PI * 2);
     s.position.set(Math.cos(a) * r, rnd(360, 470), Math.sin(a) * r);
     const sc = rnd(160, 420);
     s.scale.set(sc, sc * 0.42, 1);
@@ -4303,7 +4310,30 @@ function buildExterior() {
     if (o.isMesh) o.castShadow = o.receiveShadow = !o.material.transparent;
   });
   scene.traverse((o) => o.userData.palm && o.traverse((m) => m.isMesh && (m.castShadow = true)));
+  // bake the tower's ~270 static pieces into one mesh per material: a handful of draw calls instead of hundreds
+  exterior.updateMatrixWorld(true);
+  const byMat = new Map();
+  for (const o of [...exterior.children]) {
+    if (!o.isMesh || o === extBeacon || bands.includes(o) || o.material.transparent) continue;
+    if (!byMat.has(o.material)) byMat.set(o.material, []);
+    byMat.get(o.material).push(o);
+  }
+  for (const [mat, list] of byMat) {
+    if (list.length < 2) continue;
+    const geos = list.map((o) => o.geometry.clone().applyMatrix4(o.matrixWorld));
+    const merged = mergeGeometries(geos, false);
+    geos.forEach((g) => g.dispose());
+    if (!merged) continue;
+    for (const o of list) {
+      exterior.remove(o);
+      o.geometry.dispose();
+    }
+    const m = new THREE.Mesh(merged, mat);
+    m.castShadow = m.receiveShadow = true;
+    exterior.add(m);
+  }
   scene.add(exterior);
+  renderer.shadowMap.needsUpdate = true;
 }
 const bands = [];
 const envelopeAt = (y) => (y < EH ? envelope[Math.min(TIERS - 1, Math.floor(y / TH))] : y < 700 ? 15 : 8);
@@ -4369,11 +4399,11 @@ function buildRoom(i) {
 }
 
 // ---------- outside camera: orbit the tower ----------
-const orbit = { th: Math.PI, R: 860, y: 200, look: 400 };
+const orbit = { th: Math.PI, R: 720, y: 190, look: 380 };
 const goal = { ...orbit };
 let focusIndex = null, moodNow = 250, moodGoal = 250, flying = false;
 function overview() {
-  Object.assign(goal, { R: 860, y: 200, look: 400 });
+  Object.assign(goal, { R: 720, y: 190, look: 380 });
   focusIndex = null;
   moodGoal = 250;
 }
@@ -4388,6 +4418,7 @@ function focusFloor(i) {
 function setOutsideMode() {
   mode = "outside";
   sun.castShadow = true;
+  renderer.shadowMap.needsUpdate = true;
   exterior.visible = true;
   if (room) {
     disposeRoom(room);
@@ -4590,9 +4621,26 @@ addEventListener("resize", resize);
 let updateOutside;
 let prev = performance.now(), first = true;
 const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+// keep it smooth: drop the render resolution a step when frames run slow, raise it when there is headroom
+let frameAcc = 0, frameN = 0;
+function adaptResolution(dt) {
+  frameAcc += dt;
+  if (++frameN < 90) return;
+  const avg = frameAcc / frameN, cap = Math.min(devicePixelRatio, 1.5);
+  frameAcc = frameN = 0;
+  let next = pixelRatio;
+  if (avg > 0.026 && pixelRatio > 0.75) next = Math.max(0.75, pixelRatio - 0.25);
+  else if (avg < 0.013 && pixelRatio < cap) next = Math.min(cap, pixelRatio + 0.25);
+  if (next !== pixelRatio) {
+    pixelRatio = next;
+    renderer.setPixelRatio(pixelRatio);
+    resize();
+  }
+}
 function frame(now) {
   const dt = Math.min(0.05, (now - prev) / 1000);
   prev = now;
+  if (!document.hidden) adaptResolution(dt);
   const t = now / 1000;
   if (mode === "inside" && room) {
     if (view.arrived && view.walkT < 1) view.walkT = Math.min(1, view.walkT + dt / (reduceMotion ? 0.01 : 3.2));
