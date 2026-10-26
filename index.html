@@ -3003,6 +3003,133 @@ const hemi = new THREE.HemisphereLight(0xffffff, 0xc9a77a, 1);
 const sun = new THREE.DirectionalLight(0xffffff, 2);
 scene.add(hemi, sun, sun.target);
 
+// ---------- glass that reflects the real sky ----------
+// A cube map of the current sky, rebuilt as the time of day changes, so towers and the lake
+// mirror blue at noon and orange at sunset instead of a grey studio.
+const envScene = new THREE.Scene();
+// below the horizon, glass mirrors the towers and haze around it, not the sand: a cool blue-grey
+const envSkyMat = sky.material.clone();
+envSkyMat.uniforms = { ...skyU, ground: { value: new THREE.Color() }, stars: { value: 0 } };
+envScene.add(new THREE.Mesh(sky.geometry, envSkyMat));
+const skyPmrem = new THREE.PMREMGenerator(renderer);
+const skyEnvMats = [];
+let skyEnv = null, envFor = -1e9;
+function refreshSkyEnv(metres) {
+  if (skyEnv && Math.abs(metres - envFor) < 35) return;
+  envFor = metres;
+  envSkyMat.uniforms.ground.value.copy(skyU.top.value).lerp(skyU.horizon.value, 0.35).multiplyScalar(0.55);
+  const rt = skyPmrem.fromScene(envScene, 0, 1, 20000);
+  for (const m of skyEnvMats) {
+    if (!m.envMap) m.needsUpdate = true;
+    m.envMap = rt.texture;
+  }
+  if (skyEnv) skyEnv.dispose();
+  skyEnv = rt;
+}
+const reflectSky = (m) => (skyEnvMats.push(m), m);
+
+// ---------- facades drawn to real scale ----------
+// Windows, mullions and floor slabs are computed per pixel from world position, so every building
+// gets 3.6–3.9 m floors and real-width bays whatever its size. Patterns blend to their average
+// in the distance, which keeps thin lines from shimmering.
+const facadeU = { uNight: { value: 0 } };
+const FACADE_GLSL = {
+  0: `// glass curtain wall: 1.5 m panels, 3.9 m floors, thin mullions, tinted mirror glass per building
+    vec2 cell = vec2(hu / 1.5, hv / 3.9);
+    vec2 fw = max(fwidth(cell), vec2(1e-4));
+    vec2 gq = abs(fract(cell) - 0.5);
+    float far = clamp(max(fw.x, fw.y) * 3.0 - 0.35, 0.0, 1.0);
+    float frame = max(1.0 - smoothstep(0.022 - fw.x, 0.022 + fw.x, 0.5 - gq.x), 1.0 - smoothstep(0.03 - fw.y, 0.03 + fw.y, 0.5 - gq.y));
+    float span = 1.0 - smoothstep(0.38 - fw.y, 0.38 + fw.y, gq.y);
+    span = mix(1.0 - span, 0.24, far);
+    frame = mix(frame, 0.06, far);
+    fGlass = wall * (1.0 - frame);
+    fWin = fGlass * (1.0 - span);
+    vec3 glass = min(diffuseColor.rgb * 1.25, vec3(1.0));
+    vec3 col = mix(mix(glass, glass * 0.86, span), glass * 0.62, frame);
+    diffuseColor.rgb = mix(vec3(0.3, 0.31, 0.33), col, wall);`,
+  1: `// stone or render with punched windows: 3.2 m bays, 3.6 m floors
+    vec2 cell = vec2(hu / 3.2, hv / 3.6);
+    vec2 fw = max(fwidth(cell), vec2(1e-4));
+    vec2 gq = abs(fract(cell) - 0.5);
+    float win = smoothstep(0.28 + fw.x, 0.28 - fw.x, gq.x) * smoothstep(0.24 + fw.y, 0.24 - fw.y, gq.y);
+    float far = clamp(max(fw.x, fw.y) * 3.0 - 0.35, 0.0, 1.0);
+    win = mix(win, 0.26, far);
+    fGlass = wall * win;
+    fWin = fGlass;
+    diffuseColor.rgb = mix(vec3(0.5, 0.48, 0.45), mix(diffuseColor.rgb, vec3(0.3, 0.38, 0.46), win), wall);`,
+  2: `// the main tower: silver mirror glass, bright stainless fins every 1.4 m, a thin slab line each floor,
+    // and a dark louvred mechanical floor every 30 floors
+    vec2 cell = vec2(hu / 1.4, hv / 3.75);
+    vec2 fw = max(fwidth(cell), vec2(1e-4));
+    vec2 gq = abs(fract(cell) - 0.5);
+    float far = clamp(max(fw.x, fw.y) * 3.0 - 0.35, 0.0, 1.0);
+    float fin = 1.0 - smoothstep(0.08 - fw.x, 0.08 + fw.x, 0.5 - gq.x);
+    float span = 1.0 - smoothstep(0.035 - fw.y, 0.035 + fw.y, 0.5 - gq.y);
+    float mh = mod(hv, 112.5);
+    float mech = smoothstep(0.0, 0.6, mh) * (1.0 - smoothstep(5.2, 5.8, mh));
+    fin = mix(fin, 0.12, far);
+    span = mix(span, 0.07, far);
+    fGlass = wall * (1.0 - fin) * (1.0 - mech);
+    fWin = fGlass * (1.0 - span);
+    vec3 col = mix(vec3(0.66, 0.74, 0.82), vec3(0.58, 0.64, 0.71), span);
+    col = mix(col, vec3(0.93, 0.95, 0.97), fin);
+    col = mix(col, vec3(0.24, 0.27, 0.3), mech);
+    diffuseColor.rgb = mix(vec3(0.62, 0.64, 0.67), col, wall);`,
+};
+function facadeMaterial(kind, o = {}) {
+  const m = reflectSky(new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.25, roughness: 0.6, ...o }));
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uNight = facadeU.uNight;
+    sh.vertexShader =
+      "varying vec3 vFWP; varying vec3 vFWN; varying float vFSeed;\n" +
+      sh.vertexShader.replace(
+        "#include <worldpos_vertex>",
+        `#include <worldpos_vertex>
+        vec4 fwp = vec4(transformed, 1.0);
+        vec3 fn = objectNormal;
+        #ifdef USE_INSTANCING
+          fwp = instanceMatrix * fwp;
+          fn = mat3(instanceMatrix) * fn;
+          vFSeed = fract(sin(dot(instanceMatrix[3].xz, vec2(12.9898, 78.233))) * 43758.5453);
+        #else
+          vFSeed = 0.37;
+        #endif
+        vFWP = (modelMatrix * fwp).xyz;
+        vFWN = normalize(mat3(modelMatrix) * fn);`
+      );
+    sh.fragmentShader =
+      "uniform float uNight; varying vec3 vFWP; varying vec3 vFWN; varying float vFSeed;\n" +
+      sh.fragmentShader
+        .replace(
+          "#include <color_fragment>",
+          `#include <color_fragment>
+          vec3 fN = normalize(vFWN);
+          float wall = 1.0 - step(0.5, abs(fN.y));
+          float hu = abs(fN.x) > abs(fN.z) ? vFWP.z : vFWP.x;
+          float hv = vFWP.y;
+          float fWin = 0.0, fGlass = 0.0;
+          ${FACADE_GLSL[kind]}
+          // lights come on in office-sized runs (5 bays along one floor), and blur to a soft glow far away
+          float wh = fract(sin(dot(vec2(floor(cell.x / 5.0), floor(cell.y)) + vFSeed * 91.7, vec2(127.1, 311.7))) * 43758.5453);
+          float fLit = fWin * step(0.6, wh) * (0.6 + 0.4 * fract(wh * 13.7));
+          fLit = mix(fLit, fWin * 0.4, far);`
+        )
+        .replace(
+          "#include <metalnessmap_fragment>",
+          `#include <metalnessmap_fragment>
+          metalnessFactor = mix(metalnessFactor, 0.95, fGlass);
+          roughnessFactor = mix(roughnessFactor, 0.06, fGlass);`
+        )
+        .replace(
+          "#include <emissivemap_fragment>",
+          `#include <emissivemap_fragment>
+          totalEmissiveRadiance += vec3(1.0, 0.8, 0.55) * fLit * uNight * 1.3;`
+        );
+  };
+  return m;
+}
+
 // Time of day follows altitude: morning in the lobby, night at the spire.
 const KEYS = [
   { p: 0.0, top: "#5ea6df", hor: "#f3dcb9", gnd: "#d9c3a0", sun: "#fff0d8", sunI: 2.4, hemi: 1.0, fog: "#e8d7bb", win: 0.0, stars: 0, el: 0.6, env: 0.7 },
@@ -3024,7 +3151,7 @@ function sampleMood(p) {
   for (const k of ["sunI", "hemi", "win", "stars", "el", "env"]) mood[k] = a[k] + (b[k] - a[k]) * t;
   return mood;
 }
-let cityMat, carMat, cloudMats = [];
+let carMat, cloudMats = [];
 const extGlass = [];
 const white = new THREE.Color(1, 1, 1);
 function applyMood(metres) {
@@ -3047,7 +3174,8 @@ function applyMood(metres) {
   scene.fog.color.copy(m.fog);
   scene.fog.near = 150 + metres * 0.6;
   scene.fog.far = 3800 + metres * 3;
-  cityMat.emissiveIntensity = m.win;
+  facadeU.uNight.value = m.win;
+  refreshSkyEnv(metres);
   carMat.emissiveIntensity = m.win * 0.9;
   for (const c of cloudMats) c.color.copy(white).lerp(m.sun, 0.45).lerp(m.top, m.stars * 0.5);
   for (const g of extGlass) g.emissiveIntensity = m.win;
@@ -3089,7 +3217,7 @@ function buildLake(L) {
   }), true));
   lakeNormals.colorSpace = THREE.NoColorSpace;
   lakeNormals.repeat.set(40, 40);
-  const water = std({ color: 0x1b4664, metalness: 0.35, roughness: 0.07, normalMap: lakeNormals, normalScale: new THREE.Vector2(0.55, 0.55), envMapIntensity: 1.3 });
+  const water = reflectSky(std({ color: 0x1b4664, metalness: 0.35, roughness: 0.07, normalMap: lakeNormals, normalScale: new THREE.Vector2(0.55, 0.55), envMapIntensity: 1.0 }));
   put(scene, mesh(new THREE.CircleGeometry(L.r, 96), water), L.x, 0.08, L.z, 0, -Math.PI / 2);
   put(scene, mesh(new THREE.RingGeometry(L.r, L.r + 4, 120), std({ color: 0xd8ccb4, roughness: 0.8 })), L.x, 0.18, L.z, 0, -Math.PI / 2);
 }
@@ -3239,47 +3367,113 @@ function buildOutside() {
     put(scene, P(12000, 18, roadMat), 0, 0.03, k * 320 - 160, 0, -Math.PI / 2);
   }
   put(scene, P(40, 12000, roadMat), -480, 0.04, 0, 0, -Math.PI / 2);
-  // city
-  cityMat = std({ map: T.city, emissiveMap: T.cityLights, emissive: 0xffc98a, emissiveIntensity: 0, roughness: 0.5, metalness: 0.4 });
-  const box = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
-  const N = 2200;
-  const city = new THREE.InstancedMesh(box, cityMat, N);
-  const tops = new THREE.InstancedMesh(box, cityMat, N);
+  // the city: a Sheikh Zayed Road wall of towers, a downtown ring, and low-rise beyond
+  const glassMat = facadeMaterial(0);
+  const stoneMat = facadeMaterial(1, { metalness: 0.05, roughness: 0.8 });
+  const steelMat = reflectSky(std({ color: 0xd5dbe1, metalness: 1, roughness: 0.25 }));
+  const geo = {
+    box: new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0),
+    round: new THREE.CylinderGeometry(0.5, 0.5, 1, 28).translate(0, 0.5, 0),
+    tri: new THREE.CylinderGeometry(0.6, 0.6, 1, 3).translate(0, 0.5, 0),
+    cone: new THREE.ConeGeometry(0.5, 1, 4).translate(0, 0.5, 0).rotateY(Math.PI / 4),
+    spire: new THREE.ConeGeometry(0.5, 1, 10).translate(0, 0.5, 0),
+  };
+  const make = (g, mat, n) => {
+    const im = new THREE.InstancedMesh(g, mat, n);
+    im.count = 0;
+    scene.add(im);
+    return im;
+  };
+  const sets = {
+    glassBox: make(geo.box, glassMat, 1400),
+    glassRound: make(geo.round, glassMat, 260),
+    glassTri: make(geo.tri, glassMat, 220),
+    stone: make(geo.box, stoneMat, 2000),
+    podium: make(geo.box, stoneMat, 900),
+    crown: make(geo.cone, glassMat, 400),
+    spire: make(geo.spire, steelMat, 300),
+  };
   const tmp = new THREE.Object3D();
-  const palette = ["#d9cdb6", "#c3ccd6", "#a9b8c8", "#e6dccb", "#8fa3b8", "#b9a88e", "#9fb4c4"].map((c) => new THREE.Color(c));
-  let n = 0, nt = 0;
-  for (let tries = 0; n < N && tries < N * 5; tries++) {
-    const r = 230 + Math.pow(Math.random(), 0.8) * 3200;
-    const a = Math.random() * Math.PI * 2;
-    const x = Math.cos(a) * r, z = Math.sin(a) * r;
-    if (Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r + 30) continue;
-    const mx = ((x % 320) + 320) % 320, mz = (((z + 160) % 320) + 320) % 320;
-    if (mx < 22 || mx > 298 || mz < 22 || mz > 298 || Math.abs(x + 480) < 40) continue;
-    // keep the lake side open so the tower reads from the default view
-    if (z < 0 && Math.abs(x) < 380 + -z * 0.25 && r < 1500) continue;
-    const near = r < 1200 ? 0.9 : 0.75;
-    const hgt = 10 + Math.pow(Math.random(), 2.4) * 240 * near;
-    const sx = rnd(18, 50), sz = rnd(18, 50);
-    tmp.position.set(x, 0, z);
-    tmp.rotation.set(0, Math.random() < 0.8 ? 0 : rnd(0.6), 0);
-    tmp.scale.set(sx, hgt, sz);
+  const glassTints = ["#5d7f99", "#4c7a86", "#7d93a6", "#6a7f8f", "#8c8a7c", "#3f6a8a", "#9aa8b4", "#55708a"].map((c) => new THREE.Color(c));
+  const stoneTints = ["#dccfb6", "#e8dfcf", "#cdbf9f", "#d6c6a8", "#c2b8a6", "#e3d6bd"].map((c) => new THREE.Color(c));
+  const add = (im, x, y, z, sx, sy, sz, ry, col) => {
+    if (im.count >= im.instanceMatrix.count) return;
+    tmp.position.set(x, y, z);
+    tmp.rotation.set(0, ry, 0);
+    tmp.scale.set(sx, sy, sz);
     tmp.updateMatrix();
-    city.setMatrixAt(n, tmp.matrix);
-    const col = pick(palette);
-    city.setColorAt(n, col);
-    n++;
-    if (hgt > 60 && Math.random() < 0.5) {
-      tmp.position.y = hgt;
-      tmp.scale.set(sx * 0.6, hgt * rnd(0.1, 0.25), sz * 0.6);
-      tmp.updateMatrix();
-      tops.setMatrixAt(nt, tmp.matrix);
-      tops.setColorAt(nt, col);
-      nt++;
+    im.setMatrixAt(im.count, tmp.matrix);
+    im.setColorAt(im.count, col);
+    im.count++;
+  };
+  // one lot per 46 m cell, so towers never overlap
+  const taken = new Set();
+  const claim = (x, z, r) => {
+    const keys = [];
+    for (let gx = Math.floor((x - r) / 46); gx <= Math.floor((x + r) / 46); gx++)
+      for (let gz = Math.floor((z - r) / 46); gz <= Math.floor((z + r) / 46); gz++) keys.push(gx + "," + gz);
+    if (keys.some((k) => taken.has(k))) return false;
+    keys.forEach((k) => taken.add(k));
+    return true;
+  };
+  const onRoad = (x, z, r) => {
+    const mx = ((x % 320) + 320) % 320, mz = (((z + 160) % 320) + 320) % 320;
+    return mx < 12 + r || mx > 308 - r || mz < 12 + r || mz > 308 - r || Math.abs(x + 480) < 22 + r;
+  };
+  function tower(x, z, h, w, d, kind) {
+    const r = Math.max(w, d) / 2;
+    if (Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r + 25 + r || Math.hypot(x, z) < 180 + r || onRoad(x, z, r) || !claim(x, z, r)) return;
+    const ry = Math.random() < 0.75 ? 0 : rnd(-0.5, 0.5);
+    const floors = Math.max(3, Math.round(h / 3.9));
+    h = floors * 3.9;
+    if (kind === "stone") {
+      add(sets.stone, x, 0, z, w, h, d, ry, pick(stoneTints));
+      return;
     }
+    const tint = pick(glassTints);
+    // a stone podium of shops and parking under most towers
+    if (h > 60 && Math.random() < 0.7) add(sets.podium, x, 0, z, w * 1.5, rnd(8, 16), d * 1.5, ry, pick(stoneTints));
+    const shape = Math.random();
+    if (shape < 0.14) add(sets.glassRound, x, 0, z, w, h, w, ry, tint);
+    else if (shape < 0.26) {
+      add(sets.glassTri, x, 0, z, w, h, w, ry, tint);
+      add(sets.crown, x, h, z, w * 0.85, w * rnd(0.6, 1.1), w * 0.85, ry, tint);
+    } else {
+      // stepped towers: a slimmer section on top
+      add(sets.glassBox, x, 0, z, w, h, d, ry, tint);
+      if (h > 120 && Math.random() < 0.45) {
+        const h2 = Math.round((h * rnd(0.15, 0.3)) / 3.9) * 3.9;
+        add(sets.glassBox, x, h, z, w * 0.7, h2, d * 0.7, ry, tint);
+        h += h2;
+        w *= 0.7;
+      }
+    }
+    if (h > 150 && Math.random() < 0.45) add(sets.spire, x, h, z, w * 0.18, rnd(25, 70), w * 0.18, 0, white);
   }
-  city.count = n;
-  tops.count = nt;
-  scene.add(city, tops);
+  // Sheikh Zayed Road: a dense wall of tall towers on both sides of the highway
+  for (let z = -3200; z < 3200; z += rnd(55, 85))
+    for (const side of [-1, 1]) {
+      const w = rnd(26, 42);
+      tower(-480 + side * (24 + w / 2 + rnd(2, 10)), z, Math.random() < 0.15 ? rnd(260, 380) : rnd(110, 260), w, rnd(26, 42), "glass");
+    }
+  // downtown around the tower
+  for (let i = 0; i < 900; i++) {
+    const r = 200 + Math.pow(Math.random(), 0.9) * 900, a = rnd(Math.PI * 2);
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if (z < 0 && Math.abs(x) < 380 + -z * 0.25 && r < 1500) continue;
+    tower(x, z, 40 + Math.pow(Math.random(), 1.6) * 260, rnd(24, 44), rnd(24, 44), Math.random() < 0.25 ? "stone" : "glass");
+  }
+  // the wider city: mostly low and mid-rise, a few towers
+  for (let i = 0; i < 4200; i++) {
+    const r = 1100 + Math.pow(Math.random(), 0.85) * 2600, a = rnd(Math.PI * 2);
+    const tall = Math.random() < 0.12;
+    tower(Math.cos(a) * r, Math.sin(a) * r, tall ? rnd(80, 220) : rnd(10, 55), rnd(20, 44), rnd(20, 44), tall ? "glass" : "stone");
+  }
+  for (const im of Object.values(sets)) {
+    im.instanceMatrix.needsUpdate = true;
+    if (im.instanceColor) im.instanceColor.needsUpdate = true;
+    im.computeBoundingSphere();
+  }
   // palms around the plaza
   const trunk = std({ color: 0x7a5c3e, roughness: 0.9 });
   for (let i = 0; i < 34; i++) {
@@ -3343,34 +3537,9 @@ const envelope = [];
 const gate = new THREE.Group();
 let extBeacon;
 function buildExterior() {
-  // glass curtain wall: steel fins every bay, a dark spandrel at every floor, and lit windows for the evening
-  const facade = shared(cvt(256, 256, (g, s) => {
-    const grad = g.createLinearGradient(0, 0, s, 0);
-    grad.addColorStop(0, "#71869c");
-    grad.addColorStop(0.5, "#9db1c4");
-    grad.addColorStop(1, "#71869c");
-    g.fillStyle = grad;
-    g.fillRect(0, 0, s, s);
-    g.fillStyle = "rgba(34, 48, 64, 0.5)";
-    for (let y = 0; y < s; y += 16) g.fillRect(0, y, s, 3);
-    g.fillStyle = "#e8eef4";
-    for (let x = 0; x < s; x += 32) g.fillRect(x, 0, 3, s);
-  }, true));
-  const lit = shared(cvt(256, 256, (g, s) => {
-    g.fillStyle = "#000";
-    g.fillRect(0, 0, s, s);
-    for (let y = 0; y < s; y += 16)
-      for (let x = 0; x < s; x += 32)
-        if (Math.random() < 0.45) {
-          g.fillStyle = `hsl(${rnd(32, 46)}, 90%, ${rnd(50, 80)}%)`;
-          g.fillRect(x + 4, y + 4, 26, 10);
-        }
-  }, true));
-  const glassMat = (rx, ry) => {
-    const m = std({ map: rep(facade, rx, ry), emissiveMap: rep(lit, rx, ry), emissive: 0xffc98a, emissiveIntensity: 0, metalness: 0.78, roughness: 0.2 });
-    extGlass.push(m);
-    return m;
-  };
+  // silver glass with steel fins, drawn to scale by the facade shader; it reflects the live sky
+  const towerGlass = facadeMaterial(2, { metalness: 0.45, roughness: 0.3 });
+  const glassMat = () => towerGlass;
   for (let k = 0; k < TIERS; k++) {
     const y0 = k * TH, ww = 30 - k * 0.5;
     let reach = 0;
@@ -3741,7 +3910,8 @@ function frame(now) {
     camera.position.set(Math.sin(orbit.th) * orbit.R, orbit.y, Math.cos(orbit.th) * orbit.R);
     camera.lookAt(0, orbit.look, 0);
     camera.updateMatrixWorld();
-    bands.forEach((b, i) => (b.material.opacity = i === focusIndex ? 0.75 + Math.sin(t * 4) * 0.2 : 0.28));
+    // only the floor you picked glows; the others are a faint line so they don't ring the tower
+    bands.forEach((b, i) => (b.material.opacity = i === focusIndex ? 0.75 + Math.sin(t * 4) * 0.2 : 0.07));
     extBeacon.scale.setScalar(0.3 + 0.7 * Math.pow(Math.max(0, Math.sin((t * Math.PI) / 1.5)), 4));
     placeTags();
   }
