@@ -11,7 +11,7 @@
    (a bottom sheet on phones), steel lift doors that close over the whole view between floors.
    One deliberate look: dark glass instruments with brass, over rooms that are lit like real interiors. */
 :root {
-  --glass: rgba(10, 17, 30, 0.74);
+  --glass: rgba(12, 19, 32, 0.9);
   --glass-hi: rgba(18, 28, 46, 0.9);
   --fg: #eef2f6;
   --mute: #a3b2c4;
@@ -50,8 +50,6 @@ a { color: inherit; }
 .glass {
   background: var(--glass);
   border: 1px solid var(--line);
-  backdrop-filter: blur(14px) saturate(1.2);
-  -webkit-backdrop-filter: blur(14px) saturate(1.2);
   box-shadow: 0 10px 40px rgba(4, 8, 16, 0.35);
 }
 
@@ -87,8 +85,6 @@ a { color: inherit; }
   text-align: center; transition: opacity 0.3s; white-space: nowrap;
 }
 .lift[data-state="open"] .lift-msg { opacity: 0; }
-.lift.moving .door { animation: hum 0.18s linear infinite alternate; }
-@keyframes hum { from { margin-top: 0; } to { margin-top: 1px; } }
 @keyframes blink { 50% { opacity: 0.3; } }
 
 /* ---------- top bar ---------- */
@@ -234,7 +230,7 @@ body:not(.outside) #tags, body.outside #spots, body.riding #spots, body.veiled #
   position: absolute; left: 0; top: 0; pointer-events: auto; display: inline-flex; align-items: center; gap: 7px;
   padding: 4px 10px 4px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--glass);
   color: var(--fg); font: 500 11.5px/1.2 var(--font-body); white-space: nowrap;
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); transition: background-color 0.15s;
+  transition: background-color 0.15s; will-change: transform;
 }
 .tag i { font: 600 10.5px/1 var(--font-mono); font-style: normal; color: var(--brass); }
 .tag::after { content: ""; position: absolute; top: 50%; width: 14px; height: 1px; background: var(--brass); opacity: 0.8; }
@@ -248,7 +244,7 @@ body:not(.outside) #tags, body.outside #spots, body.riding #spots, body.veiled #
 .spot {
   position: absolute; left: 0; top: 0; pointer-events: auto; display: inline-flex; align-items: center; gap: 8px;
   padding: 7px 14px 7px 8px; border-radius: 999px; border: 0; background: var(--brass); color: var(--brass-ink);
-  font: 600 13px/1.2 var(--font-body); white-space: nowrap; box-shadow: 0 6px 22px rgba(0, 0, 0, 0.35);
+  font: 600 13px/1.2 var(--font-body); white-space: nowrap; box-shadow: 0 6px 22px rgba(0, 0, 0, 0.35); will-change: transform;
 }
 .spot b {
   width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: var(--brass-ink); color: var(--brass);
@@ -312,7 +308,7 @@ body.outside .lift, body.outside .readout .alt { display: none; }
 @media (max-height: 640px) and (min-width: 821px) { .readout .num { font-size: 44px; } }
 @media (prefers-reduced-motion: reduce) {
   .door { transition-duration: 0.01s; }
-  .lift.moving .door, .lift.moving .lift-head .arrow { animation: none; }
+  .lift.moving .lift-head .arrow { animation: none; }
   .progress.run b { animation: none; width: 0; }
 }
 </style>
@@ -1110,7 +1106,7 @@ try {
   document.body.classList.add("no-gl");
   throw err;
 }
-renderer.setPixelRatio(Math.min(devicePixelRatio, 1.6));
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 host.appendChild(renderer.domElement);
@@ -3065,6 +3061,7 @@ function buildOutside() {
   const LAKE = { x: 30, z: -330, r: 180 };
   put(scene, mesh(new THREE.CircleGeometry(LAKE.r, 80), std({ color: 0x24587e, metalness: 0.9, roughness: 0.06 })), LAKE.x, 0.08, LAKE.z, 0, -Math.PI / 2);
   const jets = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.5, 1.4, 1, 8, 1, true).translate(0, 0.5, 0), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false }), 40);
+  jets.frustumCulled = false;
   const jetPos = [];
   for (let i = 0; i < 40; i++) {
     const a = Math.PI * (0.15 + (i / 39) * 0.7);
@@ -3151,6 +3148,8 @@ function buildOutside() {
     const m = new THREE.SpriteMaterial({ map: T.cloud, transparent: true, depthWrite: false, opacity: rnd(0.4, 0.75) });
     cloudMats.push(m);
     const s = new THREE.Sprite(m);
+    // a fixed draw order, so overlapping clouds don't swap places and pop as the camera moves
+    s.renderOrder = 1 + i;
     const r = rnd(160, 1400), a = rnd(Math.PI * 2);
     s.position.set(Math.cos(a) * r, rnd(360, 470), Math.sin(a) * r);
     const sc = rnd(160, 420);
@@ -3262,7 +3261,7 @@ function buildExterior() {
   FLOORS.forEach((f, i) => {
     const y = Math.max(3, f.m);
     const r = envelopeAt(y);
-    const band = put(exterior, C(r, r, 1.4, std({ color: 0xffd08a, emissive: 0xffc070, emissiveIntensity: 0.6, transparent: true, opacity: 0.45, side: THREE.DoubleSide }), 72, true), 0, y, 0);
+    const band = put(exterior, C(r, r, 1.4, std({ color: 0xffd08a, emissive: 0xffc070, emissiveIntensity: 0.6, transparent: true, opacity: 0.45, depthWrite: false }), 72, true), 0, y, 0);
     band.userData.floor = i;
     bands.push(band);
   });
@@ -3423,7 +3422,6 @@ function placeTags() {
     const [x, sy, ok] = project(p);
     const t = tags[i];
     t.style.visibility = ok ? "visible" : "hidden";
-    t.style.transform = `translate(${x | 0}px, ${sy | 0}px) translate(${side > 0 ? "14px" : "calc(-100% - 14px)"}, -50%)`;
     t.setAttribute("aria-current", String(i === focusIndex));
     t._y = sy;
     t._x = x;
@@ -3436,12 +3434,13 @@ function placeTags() {
     for (const t of list) {
       const y = Math.min(t._y, last - 26);
       last = y;
-      t.style.transform = `translate(${t._x | 0}px, ${y | 0}px) translate(${side ? "14px" : "calc(-100% - 14px)"}, -50%)`;
+      // sub-pixel positions on the GPU, so tags glide with the tower instead of jittering a pixel at a time
+      t.style.transform = `translate3d(${t._x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translate(${side ? "14px" : "calc(-100% - 14px)"}, -50%)`;
     }
   }
   const [gx, gy, gok] = project(new THREE.Vector3(0, 9.5, -31));
   gateTag.style.visibility = gok && orbit.R < 700 ? "visible" : gok ? "visible" : "hidden";
-  gateTag.style.transform = `translate(${gx | 0}px, ${gy | 0}px) translate(-50%, -100%)`;
+  gateTag.style.transform = `translate3d(${gx.toFixed(1)}px, ${gy.toFixed(1)}px, 0) translate(-50%, -100%)`;
 }
 function placeSpot() {
   if (!room || !room.spot) return (spotBtn.style.visibility = "hidden");
@@ -3450,7 +3449,7 @@ function placeSpot() {
   const facing = toSpot.normalize().dot(fwd) > 0.2;
   const [x, y, ok] = project(room.spot);
   spotBtn.style.visibility = ok && facing ? "visible" : "hidden";
-  spotBtn.style.transform = `translate(${x | 0}px, ${y | 0}px) translate(-50%, -100%)`;
+  spotBtn.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translate(-50%, -100%)`;
 }
 addEventListener("tower:label", (e) => (spotBtn.innerHTML = `<b>i</b>${e.detail.text}`));
 
@@ -3575,7 +3574,7 @@ function frame(now) {
     camera.updateMatrixWorld();
     placeSpot();
   } else {
-    if (!drag && !flying && !reduceMotion && now - lastInput > 4000) goal.th += dt * 0.025;
+    if (!drag && !flying && !reduceMotion && now - lastInput > 4000) goal.th += dt * 0.012;
     const s = Math.min(1, dt * (flying ? 1.9 : 2.2));
     for (const k of ["th", "R", "y", "look"]) orbit[k] += (goal[k] - orbit[k]) * s;
     moodNow += (moodGoal - moodNow) * Math.min(1, dt * 1.2);
