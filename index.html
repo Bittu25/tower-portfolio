@@ -3051,6 +3051,176 @@ function applyMood(metres) {
   carMat.emissiveIntensity = m.win * 0.9;
   for (const c of cloudMats) c.color.copy(white).lerp(m.sun, 0.45).lerp(m.top, m.stars * 0.5);
   for (const g of extGlass) g.emissiveIntensity = m.win;
+  fountainU.uLit.value = clamp((m.win - 0.3) / 1.0, 0, 1);
+  fountainU.uBright.value = 0.35 + 0.65 * clamp(m.sunI / 2.4, 0, 1);
+}
+
+
+// ---------- the lake: rippling water inside a stone edge ----------
+let lakeNormals;
+function buildLake(L) {
+  // a tiling normal map made from soft random bumps, scrolled slowly so the surface ripples
+  const N = 256;
+  const h = new Float32Array(N * N);
+  for (let k = 0; k < 140; k++) {
+    const cx = rnd(N), cy = rnd(N), r = rnd(6, 26), amp = rnd(-1, 1);
+    for (let y = -r; y <= r; y++)
+      for (let x = -r; x <= r; x++) {
+        const d = Math.hypot(x, y) / r;
+        if (d > 1) continue;
+        const px = (((cx + x) | 0) % N + N) % N, py = (((cy + y) | 0) % N + N) % N;
+        h[py * N + px] += amp * (1 - d * d) * (1 - d * d);
+      }
+  }
+  lakeNormals = shared(texOf(canvasOf(N, N, (g) => {
+    const img = g.createImageData(N, N);
+    for (let y = 0; y < N; y++)
+      for (let x = 0; x < N; x++) {
+        const dx = h[y * N + ((x + 1) % N)] - h[y * N + ((x - 1 + N) % N)];
+        const dy = h[((y + 1) % N) * N + x] - h[((y - 1 + N) % N) * N + x];
+        const v = new THREE.Vector3(-dx * 1.6, -dy * 1.6, 1).normalize();
+        const i = (y * N + x) * 4;
+        img.data[i] = (v.x * 0.5 + 0.5) * 255;
+        img.data[i + 1] = (v.y * 0.5 + 0.5) * 255;
+        img.data[i + 2] = (v.z * 0.5 + 0.5) * 255;
+        img.data[i + 3] = 255;
+      }
+    g.putImageData(img, 0, 0);
+  }), true));
+  lakeNormals.colorSpace = THREE.NoColorSpace;
+  lakeNormals.repeat.set(40, 40);
+  const water = std({ color: 0x1b4664, metalness: 0.35, roughness: 0.07, normalMap: lakeNormals, normalScale: new THREE.Vector2(0.55, 0.55), envMapIntensity: 1.3 });
+  put(scene, mesh(new THREE.CircleGeometry(L.r, 96), water), L.x, 0.08, L.z, 0, -Math.PI / 2);
+  put(scene, mesh(new THREE.RingGeometry(L.r, L.r + 4, 120), std({ color: 0xd8ccb4, roughness: 0.8 })), L.x, 0.18, L.z, 0, -Math.PI / 2);
+}
+
+// ---------- the fountains: thousands of water droplets thrown up and falling back ----------
+// Each droplet is launched from a nozzle, flies a real ballistic arc (g = 9.8 m/s²), spreads
+// into spray as it rises and fades as it falls back. The GPU works out every position from the
+// clock, so nothing is updated on the CPU. Jets sway and rise and fall in a slow wave.
+const fountainU = {
+  uTime: { value: 0 },
+  uPx: { value: 600 },
+  uLit: { value: 0 },
+  uBright: { value: 1 },
+};
+function buildFountains(L) {
+  const jets = [];
+  for (let i = 0; i < 44; i++) {
+    const a = Math.PI * (0.12 + (i / 43) * 0.76);
+    jets.push([L.x + Math.cos(a) * 125, L.z + Math.sin(a) * 70 - 25, i, 1]);
+  }
+  for (let i = 0; i < 26; i++) {
+    const a = Math.PI * (0.2 + (i / 25) * 0.6);
+    jets.push([L.x + Math.cos(a) * 80, L.z + Math.sin(a) * 40 - 30, i + 50, 0.45]);
+  }
+  const PER = 340, MIST = 12;
+  const n = jets.length * (PER + MIST);
+  const pos = new Float32Array(n * 3), jet = new Float32Array(n * 2), seed = new Float32Array(n * 4);
+  let k = 0;
+  for (const [x, z, j, scale] of jets)
+    for (let p = 0; p < PER + MIST; p++, k++) {
+      pos.set([x, 0.2, z], k * 3);
+      jet.set([j, scale], k * 2);
+      seed.set([Math.random(), Math.random(), Math.random(), p < PER ? 0 : 1], k * 4);
+    }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute("aJet", new THREE.BufferAttribute(jet, 2));
+  geo.setAttribute("aSeed", new THREE.BufferAttribute(seed, 4));
+  const mat = new THREE.ShaderMaterial({
+    uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, {}]),
+    transparent: true,
+    depthWrite: false,
+    fog: true,
+    vertexShader: `
+      #include <common>
+      #include <fog_pars_vertex>
+      #include <logdepthbuf_pars_vertex>
+      uniform float uTime, uPx;
+      attribute vec2 aJet;
+      attribute vec4 aSeed;
+      varying float vAlpha;
+      varying float vMist;
+      const float G = 9.8;
+      float jetHeight(float j, float t, float s) {
+        float wave = 0.5 + 0.5 * sin(t * 0.55 + j * 0.32);
+        float pulse = 0.65 + 0.35 * sin(t * 0.21 + j * 1.7);
+        return s * (18.0 + 70.0 * wave * wave * pulse);
+      }
+      void main() {
+        vec3 p = position;
+        float j = aJet.x, s = aJet.y;
+        float size;
+        if (aSeed.w < 0.5) {
+          float period = 9.0;
+          float age = mod(uTime + aSeed.x * period, period);
+          float launched = uTime - age;
+          float H = jetHeight(j, launched, s);
+          float v0 = sqrt(2.0 * G * H);
+          float flight = 2.0 * v0 / G;
+          float tilt = 0.22 * sin(launched * 0.45 + j * 0.6);
+          float a = (aSeed.y * 2.0 - 1.0) * 3.14159;
+          // most droplets stay in a tight white column; the rest break off into a wider crown of spray
+          bool core = aSeed.z < 0.62;
+          float spread = core ? (0.2 + age * (0.12 + aSeed.z * 0.18)) * s : (0.4 + age * (0.6 + aSeed.z * 1.6)) * s;
+          p.x += sin(tilt) * v0 * age + cos(a) * spread + age * age * 0.18;
+          p.z += sin(a) * spread;
+          p.y += cos(tilt) * v0 * age - 0.5 * G * age * age;
+          float life = age / flight;
+          vAlpha = smoothstep(0.0, 0.03, life) * (1.0 - smoothstep(0.72, 1.0, life)) * step(life, 1.0) * (core ? 0.62 : 0.32);
+          size = (core ? 1.5 + 1.4 * life : 1.0 + 3.2 * life) * s * (0.8 + aSeed.x * 0.5);
+        } else {
+          // mist rolling off the base of the jet
+          float period = 14.0;
+          float age = mod(uTime + aSeed.x * period, period);
+          float a = aSeed.y * 6.2832;
+          float r = (2.0 + age * (0.7 + aSeed.z)) * s;
+          p.x += cos(a) * r + age * 0.6;
+          p.z += sin(a) * r;
+          p.y += (1.0 + age * 0.9) * s;
+          float life = age / period;
+          vAlpha = 0.11 * smoothstep(0.0, 0.15, life) * (1.0 - life);
+          size = (7.0 + age * 1.3) * s;
+        }
+        vMist = aSeed.w;
+        vec4 mvPosition = modelViewMatrix * vec4(p, 1.0);
+        gl_Position = projectionMatrix * mvPosition;
+        gl_PointSize = clamp(size * uPx / -mvPosition.z, 1.0, 256.0);
+        #include <logdepthbuf_vertex>
+        #include <fog_vertex>
+      }`,
+    fragmentShader: `
+      #include <common>
+      #include <fog_pars_fragment>
+      #include <logdepthbuf_pars_fragment>
+      uniform float uLit, uBright;
+      varying float vAlpha;
+      varying float vMist;
+      void main() {
+        #include <logdepthbuf_fragment>
+        float d = length(gl_PointCoord - 0.5) * 2.0;
+        if (d > 1.0) discard;
+        float soft = pow(1.0 - d * d, vMist > 0.5 ? 1.5 : 2.2);
+        vec3 day = vec3(0.93, 0.96, 1.0) * uBright;
+        vec3 lit = vec3(1.0, 0.86, 0.62) * 1.6;
+        gl_FragColor = vec4(mix(day, lit, uLit), soft * vAlpha);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+        #include <fog_fragment>
+      }`,
+  });
+  Object.assign(mat.uniforms, fountainU);
+  const pts = new THREE.Points(geo, mat);
+  pts.frustumCulled = false;
+  pts.renderOrder = 60;
+  scene.add(pts);
+  return (t) => {
+    fountainU.uTime.value = t;
+    // world metres to screen pixels for the current camera and canvas
+    fountainU.uPx.value = (camera.projectionMatrix.elements[5] * renderer.domElement.height) / 2;
+    lakeNormals.offset.set((t * 0.004) % 1, (t * 0.0025) % 1);
+  };
 }
 
 function buildOutside() {
@@ -3059,15 +3229,8 @@ function buildOutside() {
   put(scene, mesh(new THREE.CircleGeometry(150, 64), std({ map: rep(T.paving, 60, 60), roughness: 0.85 })), 0, 0.01, 0, 0, -Math.PI / 2);
   // the lake in front of the windows, with fountains that dance
   const LAKE = { x: 30, z: -330, r: 180 };
-  put(scene, mesh(new THREE.CircleGeometry(LAKE.r, 80), std({ color: 0x24587e, metalness: 0.9, roughness: 0.06 })), LAKE.x, 0.08, LAKE.z, 0, -Math.PI / 2);
-  const jets = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.5, 1.4, 1, 8, 1, true).translate(0, 0.5, 0), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false }), 40);
-  jets.frustumCulled = false;
-  const jetPos = [];
-  for (let i = 0; i < 40; i++) {
-    const a = Math.PI * (0.15 + (i / 39) * 0.7);
-    jetPos.push([LAKE.x + Math.cos(a) * 120, LAKE.z + Math.sin(a) * 60 - 20]);
-  }
-  scene.add(jets);
+  buildLake(LAKE);
+  const fountains = buildFountains(LAKE);
   // roads on a grid, with traffic on two of them
   const roadMat = std({ color: 0x45494f, roughness: 0.9 });
   for (let k = -8; k <= 8; k++) {
@@ -3157,15 +3320,7 @@ function buildOutside() {
     clouds.add(s);
   }
   return (dt, t) => {
-    for (let i = 0; i < 40; i++) {
-      const hh = 12 + 55 * (0.5 + 0.5 * Math.sin(t * 1.6 + i * 0.35)) * (0.6 + 0.4 * Math.sin(t * 0.37 + i));
-      tmp.position.set(jetPos[i][0], 0, jetPos[i][1]);
-      tmp.rotation.set(0, 0, 0);
-      tmp.scale.set(1, hh, 1);
-      tmp.updateMatrix();
-      jets.setMatrixAt(i, tmp.matrix);
-    }
-    jets.instanceMatrix.needsUpdate = true;
+    fountains(t);
     lanes.forEach((c, i) => {
       const s = ((c.off + t * c.sp) % 12000 + 12000) % 12000 - 6000;
       if (c.road === 0) tmp.position.set(-480 + c.lane * 4, 0.05, s), tmp.rotation.set(0, c.sp > 0 ? 0 : Math.PI, 0);
